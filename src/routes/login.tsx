@@ -234,12 +234,18 @@ function LoginPage() {
               {mode !== "forgot" && (
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <label htmlFor="password" className="block text-sm font-medium text-foreground">Senha</label>
+                    <label htmlFor="password" className="block text-sm font-medium text-foreground">
+                      Senha
+                    </label>
                     {mode === "signin" && (
                       <button
                         type="button"
-                        onClick={() => { setMode("forgot"); setError(""); setInfo(""); }}
-                        className="text-xs font-medium text-primary hover:underline"
+                        onClick={() => {
+                          setMode("forgot");
+                          setError("");
+                          setInfo("");
+                        }}
+                        className="text-xs font-semibold text-primary hover:text-primary/80 underline decoration-primary/30 underline-offset-4 transition-colors"
                       >
                         Esqueceu a senha?
                       </button>
