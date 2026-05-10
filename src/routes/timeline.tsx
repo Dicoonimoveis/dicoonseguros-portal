@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { getAuthToken } from "@/lib/auth";
+import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
 import { PageHeader } from "@/components/PageHeader";
 import { Phone, Mail, FileText, CheckCircle2, AlertCircle, MessageCircle, Plus } from "lucide-react";
