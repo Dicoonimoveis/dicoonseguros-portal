@@ -10,8 +10,8 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, R
 
 export const Route = createFileRoute("/")({
   beforeLoad: async () => {
-    const token = getAuthToken();
-    if (!token) {
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) {
       throw redirect({ to: "/login" });
     }
   },
@@ -20,7 +20,8 @@ export const Route = createFileRoute("/")({
 
 function DashboardPage() {
   const navigate = useNavigate();
-  const userEmail = getUserEmail() || "Usuário";
+  const user = getCurrentUser();
+  const userEmail = user?.email ?? "Usuário";
 
 
   return (
