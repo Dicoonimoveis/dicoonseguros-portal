@@ -213,18 +213,18 @@ function NovaCotagemPage() {
       </div>
 
       {/* Navigation Buttons */}
-      <div className="flex gap-3">
+      <div className="flex flex-col sm:flex-row gap-3">
         <button
           onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
           disabled={currentStep === 1}
-          className="flex items-center gap-2 px-6 py-3 rounded-lg border border-border hover:bg-surface/50 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+          className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-lg border border-border hover:bg-surface/50 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
         >
           <ChevronLeft className="w-4 h-4" /> Voltar
         </button>
         <button
           onClick={() => setCurrentStep(Math.min(7, currentStep + 1))}
           disabled={currentStep === 7}
-          className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+          className="w-full sm:flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
         >
           {currentStep === 7 ? "Gerar Multicálculo" : <>Próximo <ChevronRight className="w-4 h-4" /></>}
         </button>

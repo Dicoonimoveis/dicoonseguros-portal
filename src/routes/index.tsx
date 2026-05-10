@@ -158,8 +158,8 @@ function DashboardPage() {
             <p className="text-xs text-muted-foreground mt-1">Últimas movimentações no pipeline</p>
           </div>
         </div>
-        <div className="overflow-hidden rounded-lg border border-border">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto rounded-lg border border-border">
+          <table className="w-full text-sm min-w-[480px]">
             <thead className="bg-secondary/50 text-xs uppercase tracking-wider text-muted-foreground">
               <tr>
                 <th className="text-left font-medium px-4 py-2.5">Cliente</th>

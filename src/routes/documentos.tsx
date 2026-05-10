@@ -123,8 +123,8 @@ function DocumentosPage() {
         </div>
       ) : (
         /* Documents List */
-        <div className="rounded-xl border border-border bg-card overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="rounded-xl border border-border bg-card overflow-x-auto">
+          <table className="w-full text-sm min-w-[700px]">
             <thead className="bg-secondary/50 border-b border-border">
               <tr>
                 <th className="text-left font-medium px-6 py-4 text-xs">Nome do Arquivo</th>

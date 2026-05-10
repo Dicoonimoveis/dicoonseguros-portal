@@ -177,11 +177,11 @@ function TimelinePage() {
       </div>
 
       {/* Actions */}
-      <div className="mt-6 flex gap-3">
-        <button className="flex-1 px-6 py-3 rounded-lg border border-border hover:bg-surface/50 font-medium">
+      <div className="mt-6 flex flex-col sm:flex-row gap-3">
+        <button className="w-full sm:flex-1 px-6 py-3 rounded-lg border border-border hover:bg-surface/50 font-medium text-sm sm:text-base">
           + Adicionar Evento Manual
         </button>
-        <button className="flex-1 px-6 py-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 font-medium">
+        <button className="w-full sm:flex-1 px-6 py-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 font-medium text-sm sm:text-base">
           Próxima Ação
         </button>
       </div>

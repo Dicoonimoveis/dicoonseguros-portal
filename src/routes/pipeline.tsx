@@ -47,7 +47,7 @@ function PipelinePage() {
           const total = opportunities.reduce((sum, o) => sum + o.value, 0);
 
           return (
-            <div key={stage.id} className="flex-shrink-0 w-96 rounded-xl border border-border bg-card p-4">
+            <div key={stage.id} className="flex-shrink-0 w-[280px] sm:w-80 lg:w-96 rounded-xl border border-border bg-card p-4">
               <div className="flex items-center justify-between mb-4 pb-4 border-b border-border">
                 <div className="flex items-center gap-2">
                   <div className={`w-3 h-3 rounded-full ${stage.color}`} />

@@ -46,8 +46,8 @@ function PropostasPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-xl border border-border bg-card shadow-elegant overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="rounded-xl border border-border bg-card shadow-elegant overflow-x-auto">
+        <table className="w-full text-sm min-w-[560px]">
           <thead className="bg-secondary/50 text-xs uppercase tracking-wider text-muted-foreground border-b border-border">
             <tr>
               <th className="text-left font-medium px-6 py-4">Cliente</th>

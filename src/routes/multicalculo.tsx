@@ -117,8 +117,8 @@ function MulticalcPage() {
       </div>
 
       {/* Quotes Table */}
-      <div className="rounded-xl border border-border bg-card overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="rounded-xl border border-border bg-card overflow-x-auto">
+        <table className="w-full text-sm min-w-[800px]">
           <thead className="bg-secondary/50 text-xs uppercase tracking-wider text-muted-foreground border-b border-border">
             <tr>
               <th className="text-left font-medium px-6 py-4 w-8"></th>
@@ -168,11 +168,11 @@ function MulticalcPage() {
 
       {/* Action Buttons */}
       {selectedQuotes.length > 0 && (
-        <div className="mt-6 flex gap-3">
-          <button className="flex-1 px-4 py-2 rounded-lg border border-border hover:bg-surface/50 font-medium">
+        <div className="mt-6 flex flex-col sm:flex-row gap-3">
+          <button className="w-full sm:flex-1 px-4 py-2 rounded-lg border border-border hover:bg-surface/50 font-medium">
             Comparar ({selectedQuotes.length})
           </button>
-          <button className="flex-1 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 font-medium">
+          <button className="w-full sm:flex-1 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 font-medium">
             Gerar Proposta
           </button>
         </div>

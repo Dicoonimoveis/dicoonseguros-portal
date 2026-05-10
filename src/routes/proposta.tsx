@@ -143,7 +143,7 @@ function PropostaPage() {
           {/* Template Selection */}
           <div className="rounded-xl border border-border bg-card p-6">
             <h3 className="font-semibold text-foreground mb-4">Modelo de Proposta</h3>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {templates.map((tpl) => (
                 <button
                   key={tpl.id}
@@ -163,7 +163,8 @@ function PropostaPage() {
         </div>
 
         {/* Right: Action Buttons */}
-        <div className="rounded-xl border border-border bg-card p-6 h-fit sticky top-4 space-y-3">
+        <div className="lg:col-span-1">
+          <div className="rounded-xl border border-border bg-card p-6 h-fit lg:sticky lg:top-20 space-y-3">
           <h3 className="font-semibold text-foreground text-sm mb-4">Ações</h3>
 
           <button className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 font-medium text-sm transition-colors">

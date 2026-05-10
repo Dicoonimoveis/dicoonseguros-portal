@@ -1,10 +1,10 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Users, UserPlus, Calculator, GitCompare,
   FileText, Kanban, RefreshCw, Settings, Search, Bell, Plus,
-  FilePlus2, FolderOpen, History, LogOut,
+  FilePlus2, FolderOpen, History, LogOut, Menu, X,
 } from "lucide-react";
 import { signOut, getCurrentUser, onSessionChange, initAuth } from "@/lib/auth";
 
@@ -43,68 +43,44 @@ const navGroups: NavGroup[] = [
   },
 ];
 
-export function AppShell({ children }: { children: ReactNode }) {
-  const loc = useLocation();
-  const navigate = useNavigate();
-
-  const [user, setUser] = useState(() => getCurrentUser());
-
-  // Global session guard: re-evaluate on session changes (logout in this/other tab)
-  // and force redirect to /login when there's no session on a protected screen.
-  useEffect(() => {
-    initAuth();
-    const sync = () => {
-      const current = getCurrentUser();
-      setUser(current);
-      if (!current && loc.pathname !== "/login") {
-        navigate({ to: "/login", replace: true });
-      }
-    };
-    sync();
-    return onSessionChange(sync);
-  }, [loc.pathname, navigate]);
-
-  // Block rendering protected UI without a session (avoids flash of content).
-  if (!user) return null;
-
-  const userEmail = user.email ?? "";
-  const userName = user.name ?? userEmail.split("@")[0] ?? "Convidado";
-  const userRole = user.role ?? null;
-
-  const initials = userName
-    .split(" ")
-    .map((w) => w[0]?.toUpperCase())
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("") || "US";
-
-  const handleLogout = async () => {
-    await signOut();
-    navigate({ to: "/login" });
-  };
-
+function SidebarContent({
+  loc,
+  userRole,
+  userName,
+  userEmail,
+  initials,
+  handleLogout,
+  onNavClick,
+}: {
+  loc: ReturnType<typeof useLocation>;
+  userRole: string | null;
+  userName: string;
+  userEmail: string;
+  initials: string;
+  handleLogout: () => void;
+  onNavClick?: () => void;
+}) {
   return (
-    <div className="min-h-screen flex bg-background text-foreground">
-      <aside className="w-64 shrink-0 border-r border-sidebar-border bg-sidebar flex flex-col sticky top-0 h-screen">
-        <div className="px-5 pt-6 pb-6">
-          <Link to="/" className="flex items-center gap-2.5">
-            <div className="size-8 rounded-lg bg-gradient-amber grid place-items-center shadow-glow">
-              <span className="font-display font-bold text-primary-foreground text-sm">D</span>
-            </div>
-            <div className="leading-tight">
-              <div className="font-display font-semibold text-base">Dicoon</div>
-              <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Seguros</div>
-            </div>
-          </Link>
-        </div>
+    <>
+      <div className="px-5 pt-6 pb-6">
+        <Link to="/" className="flex items-center gap-2.5" onClick={onNavClick}>
+          <div className="size-8 rounded-lg bg-gradient-amber grid place-items-center shadow-glow">
+            <span className="font-display font-bold text-primary-foreground text-sm">D</span>
+          </div>
+          <div className="leading-tight">
+            <div className="font-display font-semibold text-base">Dicoon</div>
+            <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Seguros</div>
+          </div>
+        </Link>
+      </div>
 
-        <nav className="flex-1 px-3 space-y-4 overflow-y-auto pb-4">
-          {navGroups.map((group) => {
-            const visibleItems = group.items.filter(
-              (item) => !item.adminOnly || userRole === "admin",
-            );
-            if (visibleItems.length === 0) return null;
-            return (
+      <nav className="flex-1 px-3 space-y-4 overflow-y-auto pb-4">
+        {navGroups.map((group) => {
+          const visibleItems = group.items.filter(
+            (item) => !item.adminOnly || userRole === "admin",
+          );
+          if (visibleItems.length === 0) return null;
+          return (
             <div key={group.label}>
               <div className="px-3 mb-1.5 text-[10px] uppercase tracking-[0.18em] text-muted-foreground/70 font-medium">
                 {group.label}
@@ -116,6 +92,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                     <Link
                       key={to}
                       to={to}
+                      onClick={onNavClick}
                       className={`relative flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
                         active
                           ? "text-sidebar-accent-foreground bg-sidebar-accent"
@@ -135,59 +112,184 @@ export function AppShell({ children }: { children: ReactNode }) {
                 })}
               </div>
             </div>
-            );
-          })}
-        </nav>
+          );
+        })}
+      </nav>
 
-        <div className="p-4 border-t border-sidebar-border">
-          <div className="flex items-center gap-3">
-            <div className="size-9 rounded-full bg-secondary grid place-items-center font-display font-semibold uppercase text-xs">
-              {initials || "US"}
-            </div>
-            <div className="leading-tight min-w-0 flex-1">
-              <div className="text-sm font-medium truncate">{userName}</div>
-              <div className="text-xs text-muted-foreground truncate flex items-center gap-1.5">
-                {userRole && (
-                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider font-semibold bg-primary/15 text-primary">
-                    {userRole}
-                  </span>
-                )}
-                <span className="truncate">{userEmail}</span>
-              </div>
-            </div>
-            <button
-              onClick={handleLogout}
-              title="Sair"
-              className="size-8 rounded-md grid place-items-center text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60 transition-colors shrink-0"
-            >
-              <LogOut className="size-4" />
-            </button>
+      <div className="p-4 border-t border-sidebar-border">
+        <div className="flex items-center gap-3">
+          <div className="size-9 rounded-full bg-secondary grid place-items-center font-display font-semibold uppercase text-xs shrink-0">
+            {initials || "US"}
           </div>
+          <div className="leading-tight min-w-0 flex-1">
+            <div className="text-sm font-medium truncate">{userName}</div>
+            <div className="text-xs text-muted-foreground truncate flex items-center gap-1.5">
+              {userRole && (
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider font-semibold bg-primary/15 text-primary">
+                  {userRole}
+                </span>
+              )}
+              <span className="truncate">{userEmail}</span>
+            </div>
+          </div>
+          <button
+            onClick={handleLogout}
+            title="Sair"
+            className="size-8 rounded-md grid place-items-center text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60 transition-colors shrink-0"
+          >
+            <LogOut className="size-4" />
+          </button>
         </div>
+      </div>
+    </>
+  );
+}
+
+export function AppShell({ children }: { children: ReactNode }) {
+  const loc = useLocation();
+  const navigate = useNavigate();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  const [user, setUser] = useState(() => getCurrentUser());
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [loc.pathname]);
+
+  // Block body scroll when mobile menu is open
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [mobileOpen]);
+
+  // Global session guard
+  useEffect(() => {
+    initAuth();
+    const sync = () => {
+      const current = getCurrentUser();
+      setUser(current);
+      if (!current && loc.pathname !== "/login") {
+        navigate({ to: "/login", replace: true });
+      }
+    };
+    sync();
+    return onSessionChange(sync);
+  }, [loc.pathname, navigate]);
+
+  if (!user) return null;
+
+  const userEmail = user.email ?? "";
+  const userName = user.name ?? userEmail.split("@")[0] ?? "Convidado";
+  const userRole = user.role ?? null;
+
+  const initials = userName
+    .split(" ")
+    .map((w) => w[0]?.toUpperCase())
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("") || "US";
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate({ to: "/login" });
+  };
+
+  const sidebarProps = { loc, userRole, userName, userEmail, initials, handleLogout };
+
+  return (
+    <div className="min-h-screen flex bg-background text-foreground">
+
+      {/* ── Desktop Sidebar ── */}
+      <aside className="hidden lg:flex w-64 shrink-0 border-r border-sidebar-border bg-sidebar flex-col sticky top-0 h-screen">
+        <SidebarContent {...sidebarProps} />
       </aside>
 
-      <main className="flex-1 min-w-0">
+      {/* ── Mobile Sidebar Overlay ── */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              key="backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+              onClick={() => setMobileOpen(false)}
+            />
+            {/* Drawer */}
+            <motion.aside
+              key="drawer"
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="fixed inset-y-0 left-0 z-50 w-72 bg-sidebar border-r border-sidebar-border flex flex-col lg:hidden"
+            >
+              {/* Close button */}
+              <button
+                onClick={() => setMobileOpen(false)}
+                className="absolute top-4 right-4 size-8 rounded-md grid place-items-center text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60 transition-colors"
+              >
+                <X className="size-4" />
+              </button>
+              <SidebarContent {...sidebarProps} onNavClick={() => setMobileOpen(false)} />
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ── Main Content ── */}
+      <main className="flex-1 min-w-0 flex flex-col">
+
+        {/* Header */}
         <header className="sticky top-0 z-20 bg-background/80 backdrop-blur-xl border-b border-border">
-          <div className="flex items-center gap-4 px-8 h-16">
-            <div className="flex-1 max-w-xl relative">
+          <div className="flex items-center gap-3 px-4 sm:px-6 lg:px-8 h-14 sm:h-16">
+
+            {/* Hamburger — mobile only */}
+            <button
+              onClick={() => setMobileOpen(true)}
+              className="lg:hidden size-9 rounded-md border border-border bg-surface grid place-items-center hover:bg-surface-elevated transition-colors shrink-0"
+              aria-label="Abrir menu"
+            >
+              <Menu className="size-4" />
+            </button>
+
+            {/* Search — hidden on mobile, visible sm+ */}
+            <div className="hidden sm:flex flex-1 max-w-xl relative">
               <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
                 placeholder="Buscar cliente, apólice, oportunidade…"
                 className="w-full h-9 pl-9 pr-3 rounded-md bg-surface border border-border text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/40 focus:border-border-strong"
               />
             </div>
-            <button className="size-9 rounded-md border border-border bg-surface grid place-items-center hover:bg-surface-elevated transition-colors">
+
+            {/* Spacer on mobile */}
+            <div className="flex-1 sm:hidden" />
+
+            <button className="size-9 rounded-md border border-border bg-surface grid place-items-center hover:bg-surface-elevated transition-colors shrink-0">
               <Bell className="size-4" />
             </button>
+
             <button
               onClick={() => navigate({ to: "/nova-cotacao" })}
-              className="h-9 px-4 rounded-md bg-gradient-amber text-primary-foreground font-medium text-sm flex items-center gap-2 shadow-glow hover:opacity-95 transition-opacity"
+              className="h-9 px-3 sm:px-4 rounded-md bg-gradient-amber text-primary-foreground font-medium text-xs sm:text-sm flex items-center gap-1.5 shadow-glow hover:opacity-95 transition-opacity shrink-0"
             >
-              <Plus className="size-4" /> Nova oportunidade
+              <Plus className="size-4" />
+              <span className="hidden sm:inline">Nova oportunidade</span>
+              <span className="sm:hidden">Nova</span>
             </button>
           </div>
         </header>
-        <div className="px-8 py-8">
+
+        {/* Page content */}
+        <div className="flex-1 px-4 sm:px-6 lg:px-8 py-5 sm:py-6 lg:py-8">
           {children}
         </div>
       </main>

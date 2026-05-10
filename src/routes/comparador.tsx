@@ -84,7 +84,7 @@ function ComparadorPage() {
       />
 
       {/* Comparison Tabs */}
-      <div className="mb-6 border-b border-border flex gap-8">
+      <div className="mb-6 border-b border-border flex gap-8 overflow-x-auto whitespace-nowrap pb-1">
         {tabs.map((tab, idx) => (
           <button
             key={tab.key}
@@ -149,8 +149,8 @@ function ComparadorPage() {
       )}
 
       {selectedTabIdx === 1 && (
-        <div className="rounded-xl border border-border overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="rounded-xl border border-border overflow-x-auto">
+          <table className="w-full text-sm min-w-[640px]">
             <thead className="bg-secondary/50 border-b border-border">
               <tr>
                 <th className="text-left font-medium px-6 py-4 text-xs">Cobertura</th>
@@ -186,8 +186,8 @@ function ComparadorPage() {
       )}
 
       {selectedTabIdx === 2 && (
-        <div className="rounded-xl border border-border overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="rounded-xl border border-border overflow-x-auto">
+          <table className="w-full text-sm min-w-[640px]">
             <thead className="bg-secondary/50 border-b border-border">
               <tr>
                 <th className="text-left font-medium px-6 py-4 text-xs">Assistência</th>
@@ -246,11 +246,11 @@ function ComparadorPage() {
       )}
 
       {/* Bottom CTA */}
-      <div className="mt-8 pt-6 border-t border-border flex gap-3">
-        <button className="flex-1 px-6 py-3 rounded-lg border border-border hover:bg-surface/50 font-medium">
+      <div className="mt-8 pt-6 border-t border-border flex flex-col sm:flex-row gap-3">
+        <button className="w-full sm:flex-1 px-6 py-3 rounded-lg border border-border hover:bg-surface/50 font-medium">
           Voltar ao Multicálculo
         </button>
-        <button className="flex-1 px-6 py-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 font-medium">
+        <button className="w-full sm:flex-1 px-6 py-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 font-medium">
           Gerar Proposta para Selecionada
         </button>
       </div>
