@@ -255,6 +255,7 @@ function PropostaPage() {
           </div>
         </div>
       )}
+      </div>
     </AppShell>
   );
 }
