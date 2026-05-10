@@ -2,15 +2,23 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { PageHeader } from "@/components/PageHeader";
 import { Construction } from "lucide-react";
-import { getAuthToken, getUserRole } from "@/lib/auth";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "Administração · Dicoon Seguros" }] }),
-  beforeLoad: () => {
-    if (!getAuthToken()) {
+  beforeLoad: async () => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session) {
       throw redirect({ to: "/login" });
     }
-    if (getUserRole() !== "admin") {
+    // Server-side role verification via RLS-protected query.
+    // Client cannot spoof this — user_roles writes require an admin policy.
+    const { data: roles } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", sessionData.session.user.id);
+    const isAdmin = (roles ?? []).some((r) => r.role === "admin");
+    if (!isAdmin) {
       throw redirect({ to: "/" });
     }
   },
