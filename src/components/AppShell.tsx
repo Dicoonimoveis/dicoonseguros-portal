@@ -6,7 +6,7 @@ import {
   FileText, Kanban, RefreshCw, Settings, Search, Bell, Plus,
   FilePlus2, FolderOpen, History, LogOut,
 } from "lucide-react";
-import { clearAuth, getCurrentUser, onSessionChange } from "@/lib/auth";
+import { signOut, getCurrentUser, onSessionChange, initAuth } from "@/lib/auth";
 
 
 type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; adminOnly?: boolean };
