@@ -148,5 +148,14 @@ export async function signOut(): Promise<void> {
   emitSessionChange();
 }
 
+export async function resetPassword(email: string): Promise<void> {
+  const redirectTo =
+    typeof window !== "undefined" ? `${window.location.origin}/reset-password` : undefined;
+  const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+    redirectTo,
+  });
+  if (error) throw error;
+}
+
 // Backwards-compat alias (older code calls clearAuth on logout).
 export const clearAuth = signOut;

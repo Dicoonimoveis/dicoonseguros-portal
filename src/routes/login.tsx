@@ -31,7 +31,7 @@ const signUpSchema = z.object({
 
 function LoginPage() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [mode, setMode] = useState<"signin" | "signup" | "forgot">("signin");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -51,24 +51,35 @@ function LoginPage() {
         const parsed = signInSchema.safeParse({ email, password });
         if (!parsed.success) {
           setError(parsed.error.issues[0]?.message ?? "Dados inválidos");
+          setIsLoading(false);
           return;
         }
         await signIn(parsed.data.email, parsed.data.password);
         navigate({ to: "/" });
-      } else {
+      } else if (mode === "signup") {
         const parsed = signUpSchema.safeParse({ name, email, password });
         if (!parsed.success) {
           setError(parsed.error.issues[0]?.message ?? "Dados inválidos");
+          setIsLoading(false);
           return;
         }
         await signUp(parsed.data.email, parsed.data.password, parsed.data.name);
         setInfo("Conta criada. Entrando…");
         navigate({ to: "/" });
+      } else {
+        // forgot mode
+        if (!email.trim() || !email.includes("@")) {
+          setError("Informe um e-mail válido");
+          setIsLoading(false);
+          return;
+        }
+        await resetPassword(email);
+        setInfo("Link de recuperação enviado para o seu e-mail.");
+        setMode("signin");
       }
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Falha na autenticação";
-      // Friendlier mapping for common Supabase errors
+        err instanceof Error ? err.message : "Falha na operação";
       if (/invalid login credentials/i.test(message)) {
         setError("E-mail ou senha incorretos");
       } else if (/already registered|already exists/i.test(message)) {
@@ -144,34 +155,38 @@ function LoginPage() {
           </div>
 
           <div className="rounded-2xl border border-border bg-card p-8 shadow-elegant">
-            <div className="flex gap-1 p-1 mb-6 bg-muted rounded-lg">
-              <button
-                type="button"
-                onClick={() => { setMode("signin"); setError(""); setInfo(""); }}
-                className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
-                  mode === "signin" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"
-                }`}
-              >
-                Entrar
-              </button>
-              <button
-                type="button"
-                onClick={() => { setMode("signup"); setError(""); setInfo(""); }}
-                className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
-                  mode === "signup" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"
-                }`}
-              >
-                Criar conta
-              </button>
-            </div>
+            {mode !== "forgot" && (
+              <div className="flex gap-1 p-1 mb-6 bg-muted rounded-lg">
+                <button
+                  type="button"
+                  onClick={() => { setMode("signin"); setError(""); setInfo(""); }}
+                  className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
+                    mode === "signin" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"
+                  }`}
+                >
+                  Entrar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setMode("signup"); setError(""); setInfo(""); }}
+                  className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
+                    mode === "signup" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"
+                  }`}
+                >
+                  Criar conta
+                </button>
+              </div>
+            )}
 
             <h2 className="text-2xl font-bold text-foreground mb-2">
-              {mode === "signin" ? "Acessar plataforma" : "Crie sua conta"}
+              {mode === "signin" ? "Acessar plataforma" : mode === "signup" ? "Crie sua conta" : "Recuperar senha"}
             </h2>
             <p className="text-sm text-muted-foreground mb-6">
               {mode === "signin"
                 ? "Use suas credenciais corporativas"
-                : "Novos cadastros entram como corretor. Admins liberam permissões."}
+                : mode === "signup"
+                  ? "Novos cadastros entram como corretor. Admins liberam permissões."
+                  : "Enviaremos um link de recuperação para o seu e-mail."}
             </p>
 
             {error && (
@@ -216,32 +231,45 @@ function LoginPage() {
                 />
               </div>
 
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-foreground mb-2">Senha</label>
-                <div className="relative">
-                  <input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    maxLength={72}
-                    autoComplete={mode === "signin" ? "current-password" : "new-password"}
-                    className="w-full px-4 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
+              {mode !== "forgot" && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label htmlFor="password" className="block text-sm font-medium text-foreground">Senha</label>
+                    {mode === "signin" && (
+                      <button
+                        type="button"
+                        onClick={() => { setMode("forgot"); setError(""); setInfo(""); }}
+                        className="text-xs font-medium text-primary hover:underline"
+                      >
+                        Esqueceu a senha?
+                      </button>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      maxLength={72}
+                      autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                      className="w-full px-4 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  {mode === "signup" && (
+                    <p className="text-xs text-muted-foreground mt-1.5">Mínimo 8 caracteres.</p>
+                  )}
                 </div>
-                {mode === "signup" && (
-                  <p className="text-xs text-muted-foreground mt-1.5">Mínimo 8 caracteres.</p>
-                )}
-              </div>
+              )}
 
               <button
                 type="submit"
@@ -251,10 +279,20 @@ function LoginPage() {
                 {isLoading ? (
                   <>
                     <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
-                    {mode === "signin" ? "Entrando…" : "Criando conta…"}
+                    {mode === "signin" ? "Entrando…" : mode === "signup" ? "Criando conta…" : "Enviando…"}
                   </>
-                ) : mode === "signin" ? "Entrar" : "Criar conta"}
+                ) : mode === "signin" ? "Entrar" : mode === "signup" ? "Criar conta" : "Enviar link"}
               </button>
+
+              {mode === "forgot" && (
+                <button
+                  type="button"
+                  onClick={() => { setMode("signin"); setError(""); setInfo(""); }}
+                  className="w-full text-center text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Voltar para o login
+                </button>
+              )}
             </form>
           </div>
 
