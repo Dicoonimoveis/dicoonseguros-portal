@@ -78,8 +78,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     .slice(0, 2)
     .join("") || "US";
 
-  const handleLogout = () => {
-    clearAuth();
+  const handleLogout = async () => {
+    await signOut();
     navigate({ to: "/login" });
   };
 
