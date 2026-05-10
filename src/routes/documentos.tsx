@@ -7,8 +7,8 @@ import { useState } from "react";
 
 export const Route = createFileRoute("/documentos")({
   beforeLoad: async () => {
-    const token = getAuthToken();
-    if (!token) {
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) {
       throw redirect({ to: "/login" });
     }
   },

@@ -8,8 +8,8 @@ import { ptBR } from "date-fns/locale";
 
 export const Route = createFileRoute("/timeline")({
   beforeLoad: async () => {
-    const token = getAuthToken();
-    if (!token) {
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) {
       throw redirect({ to: "/login" });
     }
   },

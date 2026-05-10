@@ -6,8 +6,8 @@ import { AlertCircle, Phone, FileText } from "lucide-react";
 
 export const Route = createFileRoute("/renovacoes")({
   beforeLoad: async () => {
-    const token = getAuthToken();
-    if (!token) {
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) {
       throw redirect({ to: "/login" });
     }
   },
