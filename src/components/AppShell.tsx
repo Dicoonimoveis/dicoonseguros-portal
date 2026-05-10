@@ -52,6 +52,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   // Global session guard: re-evaluate on session changes (logout in this/other tab)
   // and force redirect to /login when there's no session on a protected screen.
   useEffect(() => {
+    initAuth();
     const sync = () => {
       const current = getCurrentUser();
       setUser(current);
