@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { getAuthToken } from "@/lib/auth";
+import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
 import { PageHeader } from "@/components/PageHeader";
 import { Upload, FileText, Trash2, Download, Eye, FolderPlus, Grid3x3, List } from "lucide-react";
@@ -7,8 +7,8 @@ import { useState } from "react";
 
 export const Route = createFileRoute("/documentos")({
   beforeLoad: async () => {
-    const token = getAuthToken();
-    if (!token) {
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) {
       throw redirect({ to: "/login" });
     }
   },

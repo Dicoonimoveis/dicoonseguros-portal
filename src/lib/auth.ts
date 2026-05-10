@@ -1,89 +1,15 @@
-// Auth helpers safe for SSR (storage só existe no browser).
-// Mock de credenciais para demo — substituir por Lovable Cloud + Supabase Auth quando o usuário pedir backend real.
+// Real auth backed by Lovable Cloud (Supabase). No demo credentials, no client-side role trust.
+import { supabase } from "@/integrations/supabase/client";
+import type { Session, User } from "@supabase/supabase-js";
 
 export type UserRole = "admin" | "corretor";
 
-export type DemoUser = {
-  email: string;
-  password: string;
-  name: string;
-  role: UserRole;
-};
-
 export type SessionUser = {
+  id: string;
   email: string;
   name: string;
-  role: UserRole;
+  role: UserRole | null;
 };
-
-export const DEMO_USERS: DemoUser[] = [
-  {
-    email: "admin@solvent.com",
-    password: "Admin@2025",
-    name: "Administrador",
-    role: "admin",
-  },
-  {
-    email: "corretor@solvent.com",
-    password: "Corretor@2025",
-    name: "Júlia Marques",
-    role: "corretor",
-  },
-];
-
-const STORAGE_KEY = "solvent_session";
-
-function getStorage(): Storage | null {
-  if (typeof window === "undefined") return null;
-  try {
-    return window.localStorage;
-  } catch {
-    return null;
-  }
-}
-
-export function validateCredentials(email: string, password: string): DemoUser | null {
-  const normalized = email.trim().toLowerCase();
-  return (
-    DEMO_USERS.find(
-      (u) => u.email.toLowerCase() === normalized && u.password === password,
-    ) ?? null
-  );
-}
-
-export function getSession(): { token: string; user: SessionUser } | null {
-  const storage = getStorage();
-  if (!storage) return null;
-  try {
-    const raw = storage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as { token: string; user: SessionUser };
-    if (!parsed?.token || !parsed?.user?.email) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-export function getAuthToken(): string | null {
-  return getSession()?.token ?? null;
-}
-
-export function getCurrentUser(): SessionUser | null {
-  return getSession()?.user ?? null;
-}
-
-export function getUserEmail(): string | null {
-  return getCurrentUser()?.email ?? null;
-}
-
-export function getUserName(): string | null {
-  return getCurrentUser()?.name ?? null;
-}
-
-export function getUserRole(): UserRole | null {
-  return getCurrentUser()?.role ?? null;
-}
 
 const SESSION_EVENT = "solvent:session-changed";
 
@@ -96,38 +22,131 @@ function emitSessionChange(): void {
   }
 }
 
+let cachedUser: SessionUser | null = null;
+let cachedSession: Session | null = null;
+
+export function getCurrentUser(): SessionUser | null {
+  return cachedUser;
+}
+
+export function getUserRole(): UserRole | null {
+  return cachedUser?.role ?? null;
+}
+
+export function getAuthToken(): string | null {
+  return cachedSession?.access_token ?? null;
+}
+
+async function loadProfile(user: User): Promise<SessionUser> {
+  // Fetch profile + roles in parallel. Role is verified server-side via RLS;
+  // client cannot spoof it because user_roles writes require an admin policy.
+  const [profileRes, rolesRes] = await Promise.all([
+    supabase.from("profiles").select("name").eq("user_id", user.id).maybeSingle(),
+    supabase.from("user_roles").select("role").eq("user_id", user.id),
+  ]);
+
+  const name =
+    profileRes.data?.name ??
+    (user.user_metadata?.name as string | undefined) ??
+    user.email?.split("@")[0] ??
+    "Usuário";
+
+  const roles = (rolesRes.data ?? []).map((r) => r.role as UserRole);
+  // Admin wins if present.
+  const role: UserRole | null = roles.includes("admin")
+    ? "admin"
+    : roles.includes("corretor")
+      ? "corretor"
+      : null;
+
+  return {
+    id: user.id,
+    email: user.email ?? "",
+    name,
+    role,
+  };
+}
+
+export async function refreshSessionState(): Promise<SessionUser | null> {
+  const { data } = await supabase.auth.getSession();
+  cachedSession = data.session;
+  if (!data.session?.user) {
+    cachedUser = null;
+    emitSessionChange();
+    return null;
+  }
+  cachedUser = await loadProfile(data.session.user);
+  emitSessionChange();
+  return cachedUser;
+}
+
 export function onSessionChange(handler: () => void): () => void {
   if (typeof window === "undefined") return () => {};
-  const storageHandler = (e: StorageEvent) => {
-    if (e.key === STORAGE_KEY || e.key === null) handler();
-  };
   window.addEventListener(SESSION_EVENT, handler);
-  window.addEventListener("storage", storageHandler);
   return () => {
     window.removeEventListener(SESSION_EVENT, handler);
-    window.removeEventListener("storage", storageHandler);
   };
 }
 
-export function setAuth(token: string, user: SessionUser): void {
-  const storage = getStorage();
-  if (!storage) return;
-  try {
-    storage.setItem(STORAGE_KEY, JSON.stringify({ token, user }));
-    emitSessionChange();
-  } catch {
-    /* noop */
-  }
+let initialized = false;
+export function initAuth(): void {
+  if (initialized || typeof window === "undefined") return;
+  initialized = true;
+
+  // CRITICAL: subscribe BEFORE getSession to avoid missed events.
+  supabase.auth.onAuthStateChange((_event, session) => {
+    cachedSession = session;
+    if (!session?.user) {
+      cachedUser = null;
+      emitSessionChange();
+      return;
+    }
+    // Defer Supabase calls to avoid deadlocks inside the listener.
+    setTimeout(() => {
+      loadProfile(session.user).then((u) => {
+        cachedUser = u;
+        emitSessionChange();
+      });
+    }, 0);
+  });
+
+  void refreshSessionState();
 }
 
-export function clearAuth(): void {
-  const storage = getStorage();
-  if (!storage) return;
-  try {
-    storage.removeItem(STORAGE_KEY);
-    emitSessionChange();
-  } catch {
-    /* noop */
-  }
+export async function signIn(email: string, password: string): Promise<void> {
+  const { error } = await supabase.auth.signInWithPassword({
+    email: email.trim().toLowerCase(),
+    password,
+  });
+  if (error) throw error;
+  await refreshSessionState();
 }
 
+export async function signUp(
+  email: string,
+  password: string,
+  name: string,
+): Promise<void> {
+  const redirectTo =
+    typeof window !== "undefined" ? `${window.location.origin}/` : undefined;
+  const { error } = await supabase.auth.signUp({
+    email: email.trim().toLowerCase(),
+    password,
+    options: {
+      data: { name: name.trim() },
+      emailRedirectTo: redirectTo,
+    },
+  });
+  if (error) throw error;
+  await refreshSessionState();
+}
+
+export async function signOut(): Promise<void> {
+  await supabase.auth.signOut();
+  cachedUser = null;
+  cachedSession = null;
+  emitSessionChange();
+}
+
+// Backwards-compat alias (older code calls clearAuth on logout).
+export const clearAuth = signOut;

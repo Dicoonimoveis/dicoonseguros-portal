@@ -6,7 +6,7 @@ import {
   FileText, Kanban, RefreshCw, Settings, Search, Bell, Plus,
   FilePlus2, FolderOpen, History, LogOut,
 } from "lucide-react";
-import { clearAuth, getCurrentUser, onSessionChange } from "@/lib/auth";
+import { signOut, getCurrentUser, onSessionChange, initAuth } from "@/lib/auth";
 
 
 type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; adminOnly?: boolean };
@@ -52,6 +52,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   // Global session guard: re-evaluate on session changes (logout in this/other tab)
   // and force redirect to /login when there's no session on a protected screen.
   useEffect(() => {
+    initAuth();
     const sync = () => {
       const current = getCurrentUser();
       setUser(current);
@@ -77,8 +78,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     .slice(0, 2)
     .join("") || "US";
 
-  const handleLogout = () => {
-    clearAuth();
+  const handleLogout = async () => {
+    await signOut();
     navigate({ to: "/login" });
   };
 

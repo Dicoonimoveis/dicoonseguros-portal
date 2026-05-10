@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { getAuthToken } from "@/lib/auth";
+import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
 import { PageHeader } from "@/components/PageHeader";
 import { Phone, Mail, FileText, CheckCircle2, AlertCircle, MessageCircle, Plus } from "lucide-react";
@@ -8,8 +8,8 @@ import { ptBR } from "date-fns/locale";
 
 export const Route = createFileRoute("/timeline")({
   beforeLoad: async () => {
-    const token = getAuthToken();
-    if (!token) {
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) {
       throw redirect({ to: "/login" });
     }
   },

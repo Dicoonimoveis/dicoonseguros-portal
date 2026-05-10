@@ -2,15 +2,16 @@ import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { PageHeader } from "@/components/PageHeader";
 import { kpis, productionSeries, tasks, opportunities } from "@/lib/mock-data";
-import { getAuthToken, getUserEmail } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
+import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
 import { ArrowUpRight, ArrowDownRight, Phone, FileText, Users2, Sparkles, TrendingUp, Clock, AlertCircle, CheckCircle2 } from "lucide-react";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 export const Route = createFileRoute("/")({
   beforeLoad: async () => {
-    const token = getAuthToken();
-    if (!token) {
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) {
       throw redirect({ to: "/login" });
     }
   },
@@ -19,7 +20,8 @@ export const Route = createFileRoute("/")({
 
 function DashboardPage() {
   const navigate = useNavigate();
-  const userEmail = getUserEmail() || "Usuário";
+  const user = getCurrentUser();
+  const userEmail = user?.email ?? "Usuário";
 
 
   return (
