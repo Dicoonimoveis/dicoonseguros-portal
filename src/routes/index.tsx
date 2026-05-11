@@ -5,8 +5,10 @@ import { kpis, productionSeries, tasks, opportunities } from "@/lib/mock-data";
 import { getCurrentUser } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
-import { ArrowUpRight, ArrowDownRight, Phone, FileText, Users2, Sparkles, TrendingUp, Clock, AlertCircle, CheckCircle2 } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, Phone, FileText, Users2, Sparkles, TrendingUp, Clock, AlertCircle, CheckCircle2, ShieldCheck, Upload, X } from "lucide-react";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { useState } from "react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/")({
   beforeLoad: async () => {
@@ -22,6 +24,16 @@ function DashboardPage() {
   const navigate = useNavigate();
   const user = getCurrentUser();
   const userEmail = user?.email ?? "Usuário";
+  const [selectedOp, setSelectedOp] = useState<any>(null);
+  const [isApoliceModalOpen, setIsApoliceModalOpen] = useState(false);
+
+  const handleAttachApolice = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsApoliceModalOpen(false);
+    toast.success(`Apólice anexada com sucesso! Dados de ${selectedOp.client} migrados automaticamente.`, {
+      description: "Todos os dados do veículo e cotação foram vinculados à nova apólice.",
+    });
+  };
 
 
   return (
@@ -166,22 +178,34 @@ function DashboardPage() {
                 <th className="text-left font-medium px-4 py-2.5">Produto</th>
                 <th className="text-right font-medium px-4 py-2.5">Valor</th>
                 <th className="text-left font-medium px-4 py-2.5">Etapa</th>
+                <th className="text-center font-medium px-4 py-2.5">Ações</th>
               </tr>
             </thead>
             <tbody>
               {opportunities.slice(0, 5).map((o) => (
                 <tr
                   key={o.id}
-                  onClick={() => navigate({ to: "/timeline", search: { op: o.id } as any })}
-                  className="border-t border-border hover:bg-surface transition-colors cursor-pointer"
+                  className="border-t border-border hover:bg-surface transition-colors group"
                 >
-                  <td className="px-4 py-3 font-medium">{o.client}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{o.product}</td>
-                  <td className="px-4 py-3 text-right font-mono">R$ {o.value.toLocaleString("pt-BR")}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 font-medium" onClick={() => navigate({ to: "/timeline", search: { op: o.id } as any })}>{o.client}</td>
+                  <td className="px-4 py-3 text-muted-foreground" onClick={() => navigate({ to: "/timeline", search: { op: o.id } as any })}>{o.product}</td>
+                  <td className="px-4 py-3 text-right font-mono" onClick={() => navigate({ to: "/timeline", search: { op: o.id } as any })}>R$ {o.value.toLocaleString("pt-BR")}</td>
+                  <td className="px-4 py-3" onClick={() => navigate({ to: "/timeline", search: { op: o.id } as any })}>
                     <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-secondary border border-border">
                       {o.stage}
                     </span>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedOp(o);
+                        setIsApoliceModalOpen(true);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-primary/10 text-primary hover:bg-primary text-xs font-semibold hover:text-primary-foreground transition-all border border-primary/20"
+                    >
+                      <ShieldCheck className="size-3.5" /> Apólice
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -189,6 +213,64 @@ function DashboardPage() {
           </table>
         </div>
       </div>
+
+      {/* Apolice Upload Modal */}
+      {isApoliceModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-card w-full max-w-md rounded-2xl border border-border shadow-2xl p-6 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <ShieldCheck className="size-5 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-foreground">Anexar Apólice</h2>
+                  <p className="text-xs text-muted-foreground">Converter cotação de {selectedOp?.client}</p>
+                </div>
+              </div>
+              <button onClick={() => setIsApoliceModalOpen(false)} className="text-muted-foreground hover:text-foreground">
+                <X className="size-5" />
+              </button>
+            </div>
+
+            <div className="mb-6 p-4 rounded-xl bg-primary/5 border border-primary/20">
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Ao anexar o PDF, o sistema irá copiar automaticamente:
+              </p>
+              <ul className="mt-2 space-y-1">
+                <li className="text-[11px] flex items-center gap-2">✅ Dados cadastrais do cliente</li>
+                <li className="text-[11px] flex items-center gap-2">✅ Informações técnicas do veículo</li>
+                <li className="text-[11px] flex items-center gap-2">✅ Coberturas e valores da cotação</li>
+              </ul>
+            </div>
+
+            <form onSubmit={handleAttachApolice} className="space-y-4">
+              <div className="border-2 border-dashed border-border rounded-xl p-8 flex flex-col items-center justify-center text-center hover:border-primary/50 transition-colors cursor-pointer bg-surface/50">
+                <Upload className="size-8 text-muted-foreground mb-3" />
+                <p className="text-sm font-medium">Clique para selecionar o PDF</p>
+                <p className="text-xs text-muted-foreground mt-1">ou arraste e solte o arquivo aqui</p>
+                <input type="file" className="hidden" accept=".pdf" />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsApoliceModalOpen(false)}
+                  className="flex-1 py-3 rounded-xl border border-border font-medium text-sm hover:bg-surface transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:brightness-110 transition-all shadow-glow"
+                >
+                  Confirmar e Converter
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 }
