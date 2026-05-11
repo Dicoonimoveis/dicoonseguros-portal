@@ -175,7 +175,16 @@ function PropostaPage() {
             <Mail className="w-4 h-4" /> Enviar por E-mail
           </button>
 
-          <button className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-[#25D366] text-[#25D366] hover:bg-[#25D366]/5 font-medium text-sm transition-colors">
+          <button 
+            onClick={() => {
+              const phone = proposalData.phone.replace(/\D/g, "");
+              const message = encodeURIComponent(
+                `Olá ${proposalData.client}, aqui está a sua proposta de seguro (${proposalData.id}) para o veículo ${proposalData.vehicle} na ${proposalData.insurer}. O valor total é de R$ ${proposalData.premium.toLocaleString("pt-BR")} ou 12x de R$ ${proposalData.monthly.toLocaleString("pt-BR")}. Qualquer dúvida, estou à disposição!`
+              );
+              window.open(`https://wa.me/55${phone}?text=${message}`, "_blank");
+            }}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-[#25D366] text-[#25D366] hover:bg-[#25D366]/5 font-medium text-sm transition-colors"
+          >
             <Share2 className="w-4 h-4" /> Enviar WhatsApp
           </button>
 
