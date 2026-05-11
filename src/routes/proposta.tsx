@@ -2,8 +2,12 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
 import { PageHeader } from "@/components/PageHeader";
-import { Download, Mail, Share2, Eye } from "lucide-react";
+import { Download, Mail, Share2, Eye, FileCheck, Loader2 } from "lucide-react";
 import { useState } from "react";
+import { ProposalPDF } from "@/components/ProposalPDF";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/proposta")({
   beforeLoad: async () => {
@@ -35,6 +39,36 @@ const proposalData = {
 function PropostaPage() {
   const [template, setTemplate] = useState<"padrao" | "premium" | "simplificada">("padrao");
   const [showPreview, setShowPreview] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const handleExportPDF = async () => {
+    setIsGenerating(true);
+    const element = document.getElementById("proposal-content");
+    if (!element) return;
+
+    try {
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      });
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`proposta-${proposalData.client.replace(/\s+/g, "-").toLowerCase()}-${new Date().toLocaleDateString("pt-BR").replace(/\//g, "-")}.pdf`);
+      toast.success("PDF gerado com sucesso!", {
+        description: "O documento premium foi salvo em sua pasta de downloads.",
+      });
+    } catch (error) {
+      console.error("PDF generation failed:", error);
+      toast.error("Erro ao gerar PDF.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const templates = [
     { id: "padrao", name: "Padrão", description: "Modelo corporativo com logo e todos os dados" },
@@ -167,8 +201,21 @@ function PropostaPage() {
           <div className="rounded-xl border border-border bg-card p-6 h-fit lg:sticky lg:top-20 space-y-3">
           <h3 className="font-semibold text-foreground text-sm mb-4">Ações</h3>
 
-          <button className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 font-medium text-sm transition-colors">
-            <Download className="w-4 h-4" /> Baixar PDF
+          <div className="hidden">
+            <ProposalPDF data={proposalData} />
+          </div>
+
+          <button 
+            onClick={handleExportPDF}
+            disabled={isGenerating}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-sm transition-all shadow-glow disabled:opacity-50"
+          >
+            {isGenerating ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Download className="w-4 h-4" />
+            )}
+            Exportar PDF Premium
           </button>
 
           <button className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-border hover:bg-surface/50 font-medium text-sm transition-colors">
