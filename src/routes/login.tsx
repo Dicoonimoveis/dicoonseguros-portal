@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
 import { Eye, EyeOff, Mail, Lock, Shield } from "lucide-react";
-import { signIn, signUp, resetPassword } from "@/lib/auth";
+import { signIn, signUp, resetPassword, refreshSessionState } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/login")({
@@ -55,7 +55,9 @@ function LoginPage() {
           return;
         }
         await signIn(parsed.data.email, parsed.data.password);
-        navigate({ to: "/" });
+        // Force a session refresh and wait before navigating
+        await refreshSessionState();
+        setTimeout(() => navigate({ to: "/" }), 100);
       } else if (mode === "signup") {
         const parsed = signUpSchema.safeParse({ name, email, password });
         if (!parsed.success) {
@@ -65,6 +67,7 @@ function LoginPage() {
         }
         await signUp(parsed.data.email, parsed.data.password, parsed.data.name);
         setInfo("Conta criada! Redirecionando...");
+        await refreshSessionState();
         setTimeout(() => navigate({ to: "/" }), 1500);
       } else {
         if (!email.trim() || !email.includes("@")) {
@@ -77,39 +80,40 @@ function LoginPage() {
         setMode("signin");
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Falha na operação");
+      console.error("Login error:", err);
+      setError(err instanceof Error ? err.message : "Falha na operação. Verifique suas credenciais.");
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-background p-6">
-      {/* Logo Container */}
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#111827] p-6">
+      {/* NEW GREEN LOGO CONTAINER */}
       <div className="mb-8 flex flex-col items-center">
-        <div className="w-24 h-24 bg-card rounded-lg flex items-center justify-center p-2 mb-2 shadow-elegant">
-          <svg viewBox="0 0 100 100" className="w-full h-full text-primary fill-current">
-            <path d="M20 20 C 60 20, 80 40, 80 50 C 80 60, 60 80, 20 80 L 20 60 C 40 60, 60 50, 60 50 C 60 50, 40 40, 20 40 Z" />
-            <path d="M30 45 L 30 55 L 50 55 L 50 45 Z" className="opacity-80" />
+        <div className="w-24 h-24 bg-[#333333] rounded-xl flex items-center justify-center p-0 mb-2 shadow-2xl overflow-hidden border border-white/5">
+          <svg viewBox="0 0 100 100" className="w-full h-full text-[#80cf5b] fill-current scale-110">
+             <path d="M15 15 C 60 15, 95 30, 95 50 C 95 70, 60 85, 15 85 L 15 65 C 40 65, 75 55, 75 50 C 75 45, 40 35, 15 35 Z" />
+             <path d="M15 50 L 15 85 L 35 85 L 35 50 Z" />
           </svg>
         </div>
       </div>
 
       <div className="w-full max-w-[400px]">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-foreground uppercase tracking-tight font-display">
+          <h1 className="text-2xl font-bold text-white uppercase tracking-tight font-display">
             {mode === "signin" ? "Entrar" : mode === "signup" ? "Criar conta" : "Recuperar senha"}
           </h1>
         </div>
 
-        <div className="rounded-2xl bg-card p-8 shadow-glow border border-border/50">
+        <div className="rounded-3xl bg-[#1f2937] p-8 shadow-2xl border border-white/5">
           {error && (
-            <div className="mb-4 p-3 rounded-xl bg-destructive/10 border border-destructive/30 text-sm text-destructive text-center">
+            <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-sm text-red-400 text-center animate-in fade-in slide-in-from-top-1">
               {error}
             </div>
           )}
           {info && (
-            <div className="mb-4 p-3 rounded-xl bg-primary/10 border border-primary/30 text-sm text-primary text-center">
+            <div className="mb-4 p-3 rounded-xl bg-[#80cf5b]/10 border border-[#80cf5b]/30 text-sm text-[#80cf5b] text-center animate-in fade-in slide-in-from-top-1">
               {info}
             </div>
           )}
@@ -117,7 +121,7 @@ function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === "signup" && (
               <div className="relative">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
                   <Shield className="w-5 h-5" />
                 </div>
                 <input
@@ -125,14 +129,14 @@ function LoginPage() {
                   placeholder="Nome completo"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 rounded-2xl bg-[#e8f0fe] text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                  className="w-full pl-12 pr-4 py-4 rounded-2xl bg-[#e8f0fe] text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#80cf5b] transition-all"
                   required
                 />
               </div>
             )}
 
             <div className="relative">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
                 <Mail className="w-5 h-5" />
               </div>
               <input
@@ -140,14 +144,14 @@ function LoginPage() {
                 placeholder="seu@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-12 pr-4 py-4 rounded-2xl bg-[#e8f0fe] text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                className="w-full pl-12 pr-4 py-4 rounded-2xl bg-[#e8f0fe] text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#80cf5b] transition-all"
                 required
               />
             </div>
 
             {mode !== "forgot" && (
               <div className="relative">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
                   <Lock className="w-5 h-5" />
                 </div>
                 <input
@@ -155,7 +159,7 @@ function LoginPage() {
                   placeholder="Senha"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-12 pr-12 py-4 rounded-2xl bg-[#e8f0fe] text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                  className="w-full pl-12 pr-12 py-4 rounded-2xl bg-[#e8f0fe] text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#80cf5b] transition-all"
                   required
                 />
                 <button
@@ -171,10 +175,10 @@ function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold text-lg hover:brightness-110 transition-all disabled:opacity-50 flex items-center justify-center gap-2 mt-4 shadow-glow"
+              className="w-full py-4 rounded-2xl bg-[#80cf5b] text-[#1a3a0e] font-black text-lg hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2 mt-4 shadow-lg shadow-[#80cf5b]/20"
             >
               {isLoading ? (
-                <span className="w-6 h-6 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                <span className="w-6 h-6 border-2 border-[#1a3a0e] border-t-transparent rounded-full animate-spin" />
               ) : (
                 mode === "signin" ? "Entrar" : mode === "signup" ? "Criar conta" : "Enviar link"
               )}
@@ -187,16 +191,16 @@ function LoginPage() {
                 <button
                   type="button"
                   onClick={() => { setMode("forgot"); setError(""); setInfo(""); }}
-                  className="block w-full text-primary font-medium hover:underline transition-all"
+                  className="block w-full text-[#80cf5b] font-bold hover:underline transition-all"
                 >
                   Esqueci minha senha
                 </button>
-                <div className="text-muted-foreground text-sm">
+                <div className="text-gray-400 text-sm">
                   Não tem conta?{" "}
                   <button
                     type="button"
                     onClick={() => { setMode("signup"); setError(""); setInfo(""); }}
-                    className="text-primary font-bold hover:underline transition-all"
+                    className="text-[#80cf5b] font-black hover:underline transition-all"
                   >
                     Criar conta
                   </button>
@@ -208,7 +212,7 @@ function LoginPage() {
               <button
                 type="button"
                 onClick={() => { setMode("signin"); setError(""); setInfo(""); }}
-                className="text-muted-foreground hover:text-foreground transition-colors text-sm font-medium underline underline-offset-4"
+                className="text-gray-400 hover:text-white transition-colors text-sm font-medium underline underline-offset-4"
               >
                 Voltar para o login
               </button>
