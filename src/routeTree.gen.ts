@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TimelineRouteImport } from './routes/timeline'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RenovacoesRouteImport } from './routes/renovacoes'
 import { Route as PropostasRouteImport } from './routes/propostas'
 import { Route as PropostaRouteImport } from './routes/proposta'
@@ -27,6 +28,11 @@ import { Route as IndexRouteImport } from './routes/index'
 const TimelineRoute = TimelineRouteImport.update({
   id: '/timeline',
   path: '/timeline',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RenovacoesRoute = RenovacoesRouteImport.update({
@@ -109,6 +115,7 @@ export interface FileRoutesByFullPath {
   '/proposta': typeof PropostaRoute
   '/propostas': typeof PropostasRoute
   '/renovacoes': typeof RenovacoesRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/timeline': typeof TimelineRoute
 }
 export interface FileRoutesByTo {
@@ -125,6 +132,7 @@ export interface FileRoutesByTo {
   '/proposta': typeof PropostaRoute
   '/propostas': typeof PropostasRoute
   '/renovacoes': typeof RenovacoesRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/timeline': typeof TimelineRoute
 }
 export interface FileRoutesById {
@@ -142,6 +150,7 @@ export interface FileRoutesById {
   '/proposta': typeof PropostaRoute
   '/propostas': typeof PropostasRoute
   '/renovacoes': typeof RenovacoesRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/timeline': typeof TimelineRoute
 }
 export interface FileRouteTypes {
@@ -160,6 +169,7 @@ export interface FileRouteTypes {
     | '/proposta'
     | '/propostas'
     | '/renovacoes'
+    | '/reset-password'
     | '/timeline'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -176,6 +186,7 @@ export interface FileRouteTypes {
     | '/proposta'
     | '/propostas'
     | '/renovacoes'
+    | '/reset-password'
     | '/timeline'
   id:
     | '__root__'
@@ -192,6 +203,7 @@ export interface FileRouteTypes {
     | '/proposta'
     | '/propostas'
     | '/renovacoes'
+    | '/reset-password'
     | '/timeline'
   fileRoutesById: FileRoutesById
 }
@@ -209,6 +221,7 @@ export interface RootRouteChildren {
   PropostaRoute: typeof PropostaRoute
   PropostasRoute: typeof PropostasRoute
   RenovacoesRoute: typeof RenovacoesRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   TimelineRoute: typeof TimelineRoute
 }
 
@@ -219,6 +232,13 @@ declare module '@tanstack/react-router' {
       path: '/timeline'
       fullPath: '/timeline'
       preLoaderRoute: typeof TimelineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/renovacoes': {
@@ -329,8 +349,18 @@ const rootRouteChildren: RootRouteChildren = {
   PropostaRoute: PropostaRoute,
   PropostasRoute: PropostasRoute,
   RenovacoesRoute: RenovacoesRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   TimelineRoute: TimelineRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
