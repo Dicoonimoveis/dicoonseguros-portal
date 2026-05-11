@@ -84,32 +84,32 @@ function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#111827] p-6">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background p-6">
       {/* Logo Container */}
       <div className="mb-8 flex flex-col items-center">
-        <div className="w-24 h-24 bg-black rounded-lg flex items-center justify-center p-2 mb-2">
-          <svg viewBox="0 0 100 100" className="w-full h-full text-[#0070f3] fill-current">
+        <div className="w-24 h-24 bg-card rounded-lg flex items-center justify-center p-2 mb-2 shadow-elegant">
+          <svg viewBox="0 0 100 100" className="w-full h-full text-primary fill-current">
             <path d="M20 20 C 60 20, 80 40, 80 50 C 80 60, 60 80, 20 80 L 20 60 C 40 60, 60 50, 60 50 C 60 50, 40 40, 20 40 Z" />
-            <path d="M30 45 L 30 55 L 50 55 L 50 45 Z" opacity="0.8" />
+            <path d="M30 45 L 30 55 L 50 55 L 50 45 Z" className="opacity-80" />
           </svg>
         </div>
       </div>
 
       <div className="w-full max-w-[400px]">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-white uppercase tracking-tight">
+          <h1 className="text-2xl font-bold text-foreground uppercase tracking-tight font-display">
             {mode === "signin" ? "Entrar" : mode === "signup" ? "Criar conta" : "Recuperar senha"}
           </h1>
         </div>
 
-        <div className="rounded-2xl bg-[#1f2937] p-8 shadow-2xl border border-white/5">
+        <div className="rounded-2xl bg-card p-8 shadow-glow border border-border/50">
           {error && (
-            <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-sm text-red-400 text-center">
+            <div className="mb-4 p-3 rounded-xl bg-destructive/10 border border-destructive/30 text-sm text-destructive text-center">
               {error}
             </div>
           )}
           {info && (
-            <div className="mb-4 p-3 rounded-xl bg-blue-500/10 border border-blue-500/30 text-sm text-blue-400 text-center">
+            <div className="mb-4 p-3 rounded-xl bg-primary/10 border border-primary/30 text-sm text-primary text-center">
               {info}
             </div>
           )}
@@ -117,7 +117,7 @@ function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === "signup" && (
               <div className="relative">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
                   <Shield className="w-5 h-5" />
                 </div>
                 <input
@@ -125,14 +125,14 @@ function LoginPage() {
                   placeholder="Nome completo"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 rounded-2xl bg-[#e8f0fe] text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full pl-12 pr-4 py-4 rounded-2xl bg-[#e8f0fe] text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
                   required
                 />
               </div>
             )}
 
             <div className="relative">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
                 <Mail className="w-5 h-5" />
               </div>
               <input
@@ -140,14 +140,14 @@ function LoginPage() {
                 placeholder="seu@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-12 pr-4 py-4 rounded-2xl bg-[#e8f0fe] text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-12 pr-4 py-4 rounded-2xl bg-[#e8f0fe] text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
                 required
               />
             </div>
 
             {mode !== "forgot" && (
               <div className="relative">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
                   <Lock className="w-5 h-5" />
                 </div>
                 <input
@@ -155,13 +155,13 @@ function LoginPage() {
                   placeholder="Senha"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-12 pr-12 py-4 rounded-2xl bg-[#e8f0fe] text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full pl-12 pr-12 py-4 rounded-2xl bg-[#e8f0fe] text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -171,10 +171,10 @@ function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-4 rounded-2xl bg-[#0070f3] text-white font-bold text-lg hover:bg-[#0060df] transition-all disabled:opacity-50 flex items-center justify-center gap-2 mt-4 shadow-lg shadow-blue-500/20"
+              className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold text-lg hover:brightness-110 transition-all disabled:opacity-50 flex items-center justify-center gap-2 mt-4 shadow-glow"
             >
               {isLoading ? (
-                <span className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span className="w-6 h-6 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
               ) : (
                 mode === "signin" ? "Entrar" : mode === "signup" ? "Criar conta" : "Enviar link"
               )}
@@ -187,16 +187,16 @@ function LoginPage() {
                 <button
                   type="button"
                   onClick={() => { setMode("forgot"); setError(""); setInfo(""); }}
-                  className="block w-full text-[#f97316] font-medium hover:underline transition-all"
+                  className="block w-full text-primary font-medium hover:underline transition-all"
                 >
                   Esqueci minha senha
                 </button>
-                <div className="text-gray-400 text-sm">
+                <div className="text-muted-foreground text-sm">
                   Não tem conta?{" "}
                   <button
                     type="button"
                     onClick={() => { setMode("signup"); setError(""); setInfo(""); }}
-                    className="text-[#f97316] font-bold hover:underline transition-all"
+                    className="text-primary font-bold hover:underline transition-all"
                   >
                     Criar conta
                   </button>
@@ -208,7 +208,7 @@ function LoginPage() {
               <button
                 type="button"
                 onClick={() => { setMode("signin"); setError(""); setInfo(""); }}
-                className="text-gray-400 hover:text-white transition-colors text-sm font-medium underline underline-offset-4"
+                className="text-muted-foreground hover:text-foreground transition-colors text-sm font-medium underline underline-offset-4"
               >
                 Voltar para o login
               </button>
