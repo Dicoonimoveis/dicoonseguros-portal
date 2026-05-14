@@ -20,6 +20,8 @@ import { Route as MulticalculoRouteImport } from './routes/multicalculo'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LeadsRouteImport } from './routes/leads'
 import { Route as DocumentosRouteImport } from './routes/documentos'
+import { Route as DashboardClienteRouteImport } from './routes/dashboard-cliente'
+import { Route as DashboardAdminRouteImport } from './routes/dashboard-admin'
 import { Route as ComparadorRouteImport } from './routes/comparador'
 import { Route as ClientesRouteImport } from './routes/clientes'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -80,6 +82,16 @@ const DocumentosRoute = DocumentosRouteImport.update({
   path: '/documentos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DashboardClienteRoute = DashboardClienteRouteImport.update({
+  id: '/dashboard-cliente',
+  path: '/dashboard-cliente',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardAdminRoute = DashboardAdminRouteImport.update({
+  id: '/dashboard-admin',
+  path: '/dashboard-admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ComparadorRoute = ComparadorRouteImport.update({
   id: '/comparador',
   path: '/comparador',
@@ -106,6 +118,8 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/clientes': typeof ClientesRoute
   '/comparador': typeof ComparadorRoute
+  '/dashboard-admin': typeof DashboardAdminRoute
+  '/dashboard-cliente': typeof DashboardClienteRoute
   '/documentos': typeof DocumentosRoute
   '/leads': typeof LeadsRoute
   '/login': typeof LoginRoute
@@ -123,6 +137,8 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/clientes': typeof ClientesRoute
   '/comparador': typeof ComparadorRoute
+  '/dashboard-admin': typeof DashboardAdminRoute
+  '/dashboard-cliente': typeof DashboardClienteRoute
   '/documentos': typeof DocumentosRoute
   '/leads': typeof LeadsRoute
   '/login': typeof LoginRoute
@@ -141,6 +157,8 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/clientes': typeof ClientesRoute
   '/comparador': typeof ComparadorRoute
+  '/dashboard-admin': typeof DashboardAdminRoute
+  '/dashboard-cliente': typeof DashboardClienteRoute
   '/documentos': typeof DocumentosRoute
   '/leads': typeof LeadsRoute
   '/login': typeof LoginRoute
@@ -160,6 +178,8 @@ export interface FileRouteTypes {
     | '/admin'
     | '/clientes'
     | '/comparador'
+    | '/dashboard-admin'
+    | '/dashboard-cliente'
     | '/documentos'
     | '/leads'
     | '/login'
@@ -177,6 +197,8 @@ export interface FileRouteTypes {
     | '/admin'
     | '/clientes'
     | '/comparador'
+    | '/dashboard-admin'
+    | '/dashboard-cliente'
     | '/documentos'
     | '/leads'
     | '/login'
@@ -194,6 +216,8 @@ export interface FileRouteTypes {
     | '/admin'
     | '/clientes'
     | '/comparador'
+    | '/dashboard-admin'
+    | '/dashboard-cliente'
     | '/documentos'
     | '/leads'
     | '/login'
@@ -212,6 +236,8 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   ClientesRoute: typeof ClientesRoute
   ComparadorRoute: typeof ComparadorRoute
+  DashboardAdminRoute: typeof DashboardAdminRoute
+  DashboardClienteRoute: typeof DashboardClienteRoute
   DocumentosRoute: typeof DocumentosRoute
   LeadsRoute: typeof LeadsRoute
   LoginRoute: typeof LoginRoute
@@ -304,6 +330,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocumentosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dashboard-cliente': {
+      id: '/dashboard-cliente'
+      path: '/dashboard-cliente'
+      fullPath: '/dashboard-cliente'
+      preLoaderRoute: typeof DashboardClienteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard-admin': {
+      id: '/dashboard-admin'
+      path: '/dashboard-admin'
+      fullPath: '/dashboard-admin'
+      preLoaderRoute: typeof DashboardAdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/comparador': {
       id: '/comparador'
       path: '/comparador'
@@ -340,6 +380,8 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   ClientesRoute: ClientesRoute,
   ComparadorRoute: ComparadorRoute,
+  DashboardAdminRoute: DashboardAdminRoute,
+  DashboardClienteRoute: DashboardClienteRoute,
   DocumentosRoute: DocumentosRoute,
   LeadsRoute: LeadsRoute,
   LoginRoute: LoginRoute,
