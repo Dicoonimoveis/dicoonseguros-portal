@@ -14,28 +14,215 @@ export type Database = {
   }
   public: {
     Tables: {
-      profiles: {
+      claims: {
         Row: {
           created_at: string
-          email: string
+          event_date: string
+          event_type: string
           id: string
-          name: string
+          indemnity_amount: number | null
+          insurance_type: string
+          notes: string | null
+          payment_date: string | null
+          policy_id: string | null
+          protocol: string
+          status: string
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
-          email: string
+          event_date: string
+          event_type: string
           id?: string
-          name: string
+          indemnity_amount?: number | null
+          insurance_type: string
+          notes?: string | null
+          payment_date?: string | null
+          policy_id?: string | null
+          protocol: string
+          status?: string
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
+          event_date?: string
+          event_type?: string
+          id?: string
+          indemnity_amount?: number | null
+          insurance_type?: string
+          notes?: string | null
+          payment_date?: string | null
+          policy_id?: string | null
+          protocol?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claims_policy_id_fkey"
+            columns: ["policy_id"]
+            isOneToOne: false
+            referencedRelation: "policies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_documents: {
+        Row: {
+          created_at: string
+          doc_type: string
+          file_name: string
+          file_path: string
+          id: string
+          mime_type: string | null
+          size_bytes: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          doc_type: string
+          file_name: string
+          file_path: string
+          id?: string
+          mime_type?: string | null
+          size_bytes?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          doc_type?: string
+          file_name?: string
+          file_path?: string
+          id?: string
+          mime_type?: string | null
+          size_bytes?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      policies: {
+        Row: {
+          coverages: string[]
+          created_at: string
+          end_date: string
+          id: string
+          insurer: string
+          item_label: string | null
+          policy_number: string
+          policy_type: string
+          premium: string | null
+          start_date: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          coverages?: string[]
+          created_at?: string
+          end_date: string
+          id?: string
+          insurer: string
+          item_label?: string | null
+          policy_number: string
+          policy_type: string
+          premium?: string | null
+          start_date: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          coverages?: string[]
+          created_at?: string
+          end_date?: string
+          id?: string
+          insurer?: string
+          item_label?: string | null
+          policy_number?: string
+          policy_type?: string
+          premium?: string | null
+          start_date?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      policy_documents: {
+        Row: {
+          created_at: string
+          doc_type: string
+          file_name: string
+          file_path: string
+          id: string
+          policy_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          doc_type?: string
+          file_name: string
+          file_path: string
+          id?: string
+          policy_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          doc_type?: string
+          file_name?: string
+          file_path?: string
+          id?: string
+          policy_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "policy_documents_policy_id_fkey"
+            columns: ["policy_id"]
+            isOneToOne: false
+            referencedRelation: "policies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          address: string | null
+          birth_date: string | null
+          cpf: string | null
+          created_at: string
+          email: string
+          id: string
+          name: string
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          birth_date?: string | null
+          cpf?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          name: string
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          birth_date?: string | null
+          cpf?: string | null
+          created_at?: string
           email?: string
           id?: string
           name?: string
+          phone?: string | null
           updated_at?: string
           user_id?: string
         }
