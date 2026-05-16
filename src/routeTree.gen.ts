@@ -27,6 +27,7 @@ import { Route as ClientesRouteImport } from './routes/clientes'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiExtractPolicyRouteImport } from './routes/api/extract-policy'
+import { Route as AdminImportarApoliceRouteImport } from './routes/admin.importar-apolice'
 
 const TimelineRoute = TimelineRouteImport.update({
   id: '/timeline',
@@ -118,10 +119,15 @@ const ApiExtractPolicyRoute = ApiExtractPolicyRouteImport.update({
   path: '/api/extract-policy',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminImportarApoliceRoute = AdminImportarApoliceRouteImport.update({
+  id: '/importar-apolice',
+  path: '/importar-apolice',
+  getParentRoute: () => AdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/clientes': typeof ClientesRoute
   '/comparador': typeof ComparadorRoute
   '/dashboard-admin': typeof DashboardAdminRoute
@@ -137,11 +143,12 @@ export interface FileRoutesByFullPath {
   '/renovacoes': typeof RenovacoesRoute
   '/reset-password': typeof ResetPasswordRoute
   '/timeline': typeof TimelineRoute
+  '/admin/importar-apolice': typeof AdminImportarApoliceRoute
   '/api/extract-policy': typeof ApiExtractPolicyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/clientes': typeof ClientesRoute
   '/comparador': typeof ComparadorRoute
   '/dashboard-admin': typeof DashboardAdminRoute
@@ -157,12 +164,13 @@ export interface FileRoutesByTo {
   '/renovacoes': typeof RenovacoesRoute
   '/reset-password': typeof ResetPasswordRoute
   '/timeline': typeof TimelineRoute
+  '/admin/importar-apolice': typeof AdminImportarApoliceRoute
   '/api/extract-policy': typeof ApiExtractPolicyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/clientes': typeof ClientesRoute
   '/comparador': typeof ComparadorRoute
   '/dashboard-admin': typeof DashboardAdminRoute
@@ -178,6 +186,7 @@ export interface FileRoutesById {
   '/renovacoes': typeof RenovacoesRoute
   '/reset-password': typeof ResetPasswordRoute
   '/timeline': typeof TimelineRoute
+  '/admin/importar-apolice': typeof AdminImportarApoliceRoute
   '/api/extract-policy': typeof ApiExtractPolicyRoute
 }
 export interface FileRouteTypes {
@@ -200,6 +209,7 @@ export interface FileRouteTypes {
     | '/renovacoes'
     | '/reset-password'
     | '/timeline'
+    | '/admin/importar-apolice'
     | '/api/extract-policy'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -220,6 +230,7 @@ export interface FileRouteTypes {
     | '/renovacoes'
     | '/reset-password'
     | '/timeline'
+    | '/admin/importar-apolice'
     | '/api/extract-policy'
   id:
     | '__root__'
@@ -240,12 +251,13 @@ export interface FileRouteTypes {
     | '/renovacoes'
     | '/reset-password'
     | '/timeline'
+    | '/admin/importar-apolice'
     | '/api/extract-policy'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRoute
+  AdminRoute: typeof AdminRouteWithChildren
   ClientesRoute: typeof ClientesRoute
   ComparadorRoute: typeof ComparadorRoute
   DashboardAdminRoute: typeof DashboardAdminRoute
@@ -392,12 +404,29 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiExtractPolicyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/importar-apolice': {
+      id: '/admin/importar-apolice'
+      path: '/importar-apolice'
+      fullPath: '/admin/importar-apolice'
+      preLoaderRoute: typeof AdminImportarApoliceRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
 
+interface AdminRouteChildren {
+  AdminImportarApoliceRoute: typeof AdminImportarApoliceRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminImportarApoliceRoute: AdminImportarApoliceRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRoute,
+  AdminRoute: AdminRouteWithChildren,
   ClientesRoute: ClientesRoute,
   ComparadorRoute: ComparadorRoute,
   DashboardAdminRoute: DashboardAdminRoute,
