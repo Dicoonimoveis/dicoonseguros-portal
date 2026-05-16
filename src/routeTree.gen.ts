@@ -26,6 +26,7 @@ import { Route as ComparadorRouteImport } from './routes/comparador'
 import { Route as ClientesRouteImport } from './routes/clientes'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiExtractPolicyRouteImport } from './routes/api/extract-policy'
 
 const TimelineRoute = TimelineRouteImport.update({
   id: '/timeline',
@@ -112,6 +113,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiExtractPolicyRoute = ApiExtractPolicyRouteImport.update({
+  id: '/api/extract-policy',
+  path: '/api/extract-policy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -131,6 +137,7 @@ export interface FileRoutesByFullPath {
   '/renovacoes': typeof RenovacoesRoute
   '/reset-password': typeof ResetPasswordRoute
   '/timeline': typeof TimelineRoute
+  '/api/extract-policy': typeof ApiExtractPolicyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -150,6 +157,7 @@ export interface FileRoutesByTo {
   '/renovacoes': typeof RenovacoesRoute
   '/reset-password': typeof ResetPasswordRoute
   '/timeline': typeof TimelineRoute
+  '/api/extract-policy': typeof ApiExtractPolicyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -170,6 +178,7 @@ export interface FileRoutesById {
   '/renovacoes': typeof RenovacoesRoute
   '/reset-password': typeof ResetPasswordRoute
   '/timeline': typeof TimelineRoute
+  '/api/extract-policy': typeof ApiExtractPolicyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -191,6 +200,7 @@ export interface FileRouteTypes {
     | '/renovacoes'
     | '/reset-password'
     | '/timeline'
+    | '/api/extract-policy'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -210,6 +220,7 @@ export interface FileRouteTypes {
     | '/renovacoes'
     | '/reset-password'
     | '/timeline'
+    | '/api/extract-policy'
   id:
     | '__root__'
     | '/'
@@ -229,6 +240,7 @@ export interface FileRouteTypes {
     | '/renovacoes'
     | '/reset-password'
     | '/timeline'
+    | '/api/extract-policy'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -249,6 +261,7 @@ export interface RootRouteChildren {
   RenovacoesRoute: typeof RenovacoesRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   TimelineRoute: typeof TimelineRoute
+  ApiExtractPolicyRoute: typeof ApiExtractPolicyRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -372,6 +385,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/extract-policy': {
+      id: '/api/extract-policy'
+      path: '/api/extract-policy'
+      fullPath: '/api/extract-policy'
+      preLoaderRoute: typeof ApiExtractPolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -393,6 +413,7 @@ const rootRouteChildren: RootRouteChildren = {
   RenovacoesRoute: RenovacoesRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   TimelineRoute: TimelineRoute,
+  ApiExtractPolicyRoute: ApiExtractPolicyRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
