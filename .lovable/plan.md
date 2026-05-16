@@ -1,59 +1,55 @@
+# Dashboard Admin completo + Importação de apólice com IA
 
+Vou expandir o `/dashboard-admin` existente com **9 seções funcionais** e uma **nova tela de importação inteligente** (`/admin/importar-apolice`) ligada à IA do Lovable.
 
-## Objetivo
-Corrigir o erro de build e tornar todas as abas do CRM funcionais e sincronizadas entre si.
+## Escopo
 
-## Problemas identificados
+### Backend (Supabase)
+- **Storage**: usar bucket `policy-documents` já existente para PDFs.
+- **Migração SQL**:
+  - Função RPC `admin_create_client(...)` que cria usuário em `auth.users` + `profiles` + `user_roles` (cliente) usando service role via server function.
+  - Tabela `import_settings` (alertas automáticos: 60/30/15/7/0 dias) por admin.
+  - Tabela `broker_settings` (dados da corretora: nome, email, whatsapp, horário) — singleton.
+- **Server functions** (`createServerFn` com `requireSupabaseAuth` + checagem `has_role(admin)`):
+  - `adminCreateClient` — cria cliente novo (auth + profile + role).
+  - `adminCreatePolicy` — cria apólice + upload de PDF.
+  - `adminImportSpreadsheet` — processa linhas xlsx/csv.
+  - `extractPolicyFromDocument` — chama Lovable AI Gateway (`google/gemini-2.5-pro`, suporta PDF/imagem) e retorna JSON com os campos.
+  - `adminListClients`, `adminListPolicies`, `adminListClaims`, `adminListAllDocuments`.
 
-1. **Erro de build** (`src/routes/index.tsx` linha 188): falta o `}` de fechamento da função `DashboardPage` — o `return` foi fechado mas a função não.
-2. **Botão "Nova Cotação" do dashboard** navega para `/cotacao` (rota inexistente) — deveria ir para `/nova-cotacao`.
-3. **Sidebar (AppShell)** não inclui links para rotas que já existem no projeto: `/nova-cotacao`, `/documentos`, `/timeline`, `/proposta`. Algumas dessas (`proposta` singular vs `propostas` plural) também estão desconectadas do fluxo.
-4. **Botão "+ Nova oportunidade"** no header global não faz nada (sem `onClick`).
-5. **Cards de oportunidade no Dashboard** não levam à `/pipeline` nem à timeline.
-6. **Header do AppShell** não mostra o usuário logado nem oferece logout — o card lateral está hardcoded como "Júlia Marques".
-7. **Dados desconectados**: `pipeline`, `index` e `propostas` cada um tem seu próprio mock; mover uma oportunidade no pipeline não reflete no dashboard. Para um MVP coeso, tudo deve ler de `mock-data.ts`.
+### Frontend (`src/routes/dashboard-admin.tsx`)
+Refatorar em sub-componentes (um arquivo por seção em `src/components/admin/`):
+1. **Dashboard** — 4 métricas + 2 alertas + tabela urgentes + tabela últimos clientes.
+2. **Clientes** — busca, filtros, tabela, modal "Novo cliente", drawer "Ver perfil".
+3. **Apólices** — tabela + modal "Nova apólice" com upload PDF + botão "Importar planilha".
+4. **Vencimentos** — alertas + tabelas com botão WhatsApp por linha + card de alertas automáticos persistidos.
+5. **Sinistros** — tabela + modal "Registrar sinistro" + drawer "Gerenciar".
+6. **Documentos** — lista agrupada por cliente, filtros, botão "Anexar documento".
+7. **Importar planilha** — drag-and-drop, prévia, "Baixar modelo" (xlsx via `xlsx`), botão "Processar".
+8. **Relatórios** — 6 cards com geração/exportação.
+9. **Configurações** — dados corretora + tabela usuários + alterar senha.
 
-## Mudanças propostas
+No menu lateral, abaixo de "Dashboard", botão verde destacado **"Importar apólice"** que abre `/admin/importar-apolice`.
 
-### 1. Corrigir o erro de build
-`src/routes/index.tsx`: adicionar o `}` final que fecha `function DashboardPage()`.
+### `/admin/importar-apolice` — Fluxo IA em 4 etapas
+- **Etapa 1**: upload PDF/JPG/PNG (até 20 MB) com botões "Enviar PDF", "Usar câmera" (input capture), "Escanear documento".
+- **Etapa 2**: tela de processamento com preview do arquivo, animação de scan-line, barra de progresso verde e mensagens dinâmicas rotativas. Chama `extractPolicyFromDocument` que envia o arquivo (base64) ao Lovable AI Gateway.
+- **Etapa 3**: lookup automático por CPF/CNPJ → card verde (cliente encontrado) ou amarelo (novo). Formulário em 2 seções com campos preenchidos pela IA destacados em verde (`#F0FFF8` / borda `#A8E6CE`) + tag "IA".
+- **Etapa 4**: tela de sucesso com 3 cards-resumo e 3 botões de ação. Ao confirmar: cria cliente (se novo), cria apólice, faz upload do PDF para storage.
 
-### 2. Sincronizar a navegação (AppShell)
-- Adicionar no menu lateral: **Nova Cotação** (`/nova-cotacao`), **Documentos** (`/documentos`), **Timeline** (`/timeline`).
-- Reorganizar em grupos visuais: *Visão Geral* (Dashboard), *Vendas* (Pipeline, Leads, Nova Cotação, Multicálculo, Comparador, Propostas), *Pós-venda* (Clientes, Renovações, Documentos, Timeline), *Sistema* (Administração).
-- Botão **+ Nova oportunidade** do header passa a navegar para `/nova-cotacao`.
-- Card de usuário lê o `user_email` do `sessionStorage` (mesma chave usada pelo login) e ganha botão **Sair** que limpa o sessionStorage e redireciona para `/login`.
-
-### 3. Conectar o Dashboard ao resto do app
-- Botão "Nova Cotação" → `/nova-cotacao` (corrigir URL).
-- Cada linha da tabela de Oportunidades vira link para `/timeline?op={id}` (timeline já existe).
-- Card "Renovações 30d" e "Cotações ativas" do KPI ganham clique para `/renovacoes` e `/pipeline`.
-
-### 4. Centralizar dados em `mock-data.ts`
-- Mover `mockPropostas` (que hoje vive em `propostas.tsx`) e dados de leads/renovações que estiverem espalhados para `mock-data.ts`.
-- Garantir que: **Pipeline**, **Dashboard** e **Propostas** leiam do mesmo array `opportunities` (filtros por `stage`).
-- Adicionar um helper `getOpportunityById(id)` para a Timeline e Proposta.
-
-### 5. Fluxo "Caminho de Ouro" funcional ponta-a-ponta
-Garantir que o usuário consiga percorrer: **Leads → (botão "Converter") → Nova Cotação → Multicálculo → Comparador → Proposta → Pipeline → Timeline**, com botões de "próximo passo" no rodapé de cada tela apontando para a etapa seguinte.
-
-### 6. Proteção de rotas consistente
-Toda rota (exceto `/login`) já usa `beforeLoad` checando `sessionStorage`. Manter o padrão e garantir que **todas** as 14 rotas tenham essa verificação (verificar `documentos`, `timeline`, `proposta` que podem estar sem).
-
-### 7. Verificar arquivos órfãos
-- `propostas.tsx` (plural — lista) e `proposta.tsx` (singular — detalhe/gerador): manter ambas, garantindo que da lista clica-se para a singular com `?id=`.
-- Confirmar que `routeTree.gen.ts` será regenerado pelo Vite plugin no próximo build (não editar manualmente).
+### Decisão IA
+Vou usar **Lovable AI Gateway com `google/gemini-2.5-pro`** (vision + PDF nativo, sem custo extra de API key) em vez da API Anthropic direta — não exige chave do usuário. Se preferir Claude, ative o connector Anthropic.
 
 ## Detalhes técnicos
+- Dependências novas: `xlsx` (geração/leitura de planilhas).
+- Cores: `#1D9E75` (primária), `#25D366` (WhatsApp), `#F0F2F5` (fundo), `#7C3AED` (badge admin).
+- WhatsApp link: `https://wa.me/message/HCHOQ3CXMLGFG1`.
+- Toda escrita admin protegida por `has_role(auth.uid(), 'admin')` no servidor.
+- RLS já permite admin ler tudo (políticas existentes).
 
-- Stack: TanStack Start + React 19 + Tailwind v4. Roteamento file-based em `src/routes/`.
-- Persistência de sessão: `sessionStorage` (`auth_token`, `user_email`) — sem backend ainda; manter mock até o usuário pedir Lovable Cloud.
-- Sidebar usa `framer-motion` com `layoutId="nav-indicator"` — preservar ao agrupar itens.
-- Nenhuma nova dependência necessária.
-- `routeTree.gen.ts` é auto-gerado; não tocar.
+## Fora do escopo (entrega depois se quiser)
+- Envio real de e-mail com credenciais ao novo cliente (precisa configurar email domain).
+- Implementação completa de relatórios PDF — vou entregar exportação .xlsx funcional e cards de relatório com dados; PDF customizado pode ficar para depois.
+- Scanner de documento físico (TWAIN) — botão abre o mesmo fluxo de câmera, sem suporte real a scanner USB.
 
-## Fora de escopo (sugerir como próximo passo)
-- Persistência real (Lovable Cloud + Supabase) com tabela de oportunidades e RLS.
-- Geração real de PDF da proposta (atualmente mockada).
-- Integração com APIs de seguradoras.
-
+Posso prosseguir?

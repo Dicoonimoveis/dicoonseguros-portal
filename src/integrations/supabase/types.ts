@@ -14,6 +14,72 @@ export type Database = {
   }
   public: {
     Tables: {
+      alert_settings: {
+        Row: {
+          d0: boolean
+          d15: boolean
+          d30: boolean
+          d60: boolean
+          d7: boolean
+          id: string
+          singleton: boolean
+          updated_at: string
+        }
+        Insert: {
+          d0?: boolean
+          d15?: boolean
+          d30?: boolean
+          d60?: boolean
+          d7?: boolean
+          id?: string
+          singleton?: boolean
+          updated_at?: string
+        }
+        Update: {
+          d0?: boolean
+          d15?: boolean
+          d30?: boolean
+          d60?: boolean
+          d7?: boolean
+          id?: string
+          singleton?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      broker_settings: {
+        Row: {
+          business_hours: string
+          company_name: string
+          contact_email: string
+          id: string
+          singleton: boolean
+          updated_at: string
+          whatsapp: string
+          whatsapp_link: string
+        }
+        Insert: {
+          business_hours?: string
+          company_name?: string
+          contact_email?: string
+          id?: string
+          singleton?: boolean
+          updated_at?: string
+          whatsapp?: string
+          whatsapp_link?: string
+        }
+        Update: {
+          business_hours?: string
+          company_name?: string
+          contact_email?: string
+          id?: string
+          singleton?: boolean
+          updated_at?: string
+          whatsapp?: string
+          whatsapp_link?: string
+        }
+        Relationships: []
+      }
       claims: {
         Row: {
           created_at: string
