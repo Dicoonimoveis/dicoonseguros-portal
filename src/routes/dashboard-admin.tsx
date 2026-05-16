@@ -12,11 +12,18 @@ import * as XLSX from "xlsx";
 
 export const Route = createFileRoute("/dashboard-admin")({
   beforeLoad: async () => {
-    const { data: sessionData } = await supabase.auth.getSession();
-    if (!sessionData.session) throw redirect({ to: "/login" });
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) {
+      throw redirect({ to: "/login" });
+    }
     const { data: roles } = await supabase
-      .from("user_roles").select("role").eq("user_id", sessionData.session.user.id);
-    if (!(roles ?? []).some((r) => r.role === "admin")) throw redirect({ to: "/dashboard-cliente" });
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", data.session.user.id);
+    const isAdmin = (roles ?? []).some((r) => r.role === "admin");
+    if (!isAdmin) {
+      throw redirect({ to: "/acesso-negado" });
+    }
   },
   component: AdminDashboard,
 });

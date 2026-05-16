@@ -18,13 +18,16 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/admin/importar-apolice")({
   beforeLoad: async () => {
     const { data } = await supabase.auth.getSession();
-    if (!data.session) throw redirect({ to: "/login" });
+    if (!data.session) {
+      throw redirect({ to: "/login" });
+    }
     const { data: roles } = await supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", data.session.user.id);
-    if (!(roles ?? []).some((r) => r.role === "admin")) {
-      throw redirect({ to: "/dashboard-cliente" });
+    const isAdmin = (roles ?? []).some((r) => r.role === "admin");
+    if (!isAdmin) {
+      throw redirect({ to: "/acesso-negado" });
     }
   },
   component: ImportarApolicePage,

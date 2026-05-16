@@ -7,19 +7,17 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "Administração · Dicoon Seguros" }] }),
   beforeLoad: async () => {
-    const { data: sessionData } = await supabase.auth.getSession();
-    if (!sessionData.session) {
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) {
       throw redirect({ to: "/login" });
     }
-    // Server-side role verification via RLS-protected query.
-    // Client cannot spoof this — user_roles writes require an admin policy.
     const { data: roles } = await supabase
       .from("user_roles")
       .select("role")
-      .eq("user_id", sessionData.session.user.id);
+      .eq("user_id", data.session.user.id);
     const isAdmin = (roles ?? []).some((r) => r.role === "admin");
     if (!isAdmin) {
-      throw redirect({ to: "/" });
+      throw redirect({ to: "/acesso-negado" });
     }
   },
   component: () => (
