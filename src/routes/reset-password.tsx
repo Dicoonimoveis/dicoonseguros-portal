@@ -14,16 +14,43 @@ function ResetPasswordPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
+  const [hasSession, setHasSession] = useState(false);
 
   useEffect(() => {
-    // Check if we have a recovery session
+    // Check if we have a recovery session or PKCE code
     const checkSession = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (!data.session) {
-        // If no session, they shouldn't be here unless they just clicked a link
-        // Supabase handles the session creation from the hash fragment automatically
+      // Handle PKCE flow (URL has ?code=...)
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+      
+      if (code) {
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) {
+          setError("O link é inválido ou expirou. Por favor, solicite um novo.");
+        } else if (data.session) {
+          setHasSession(true);
+        }
+        // Remove code from URL to prevent reusing
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } else {
+        // Fallback for implicit flow (hash fragment) or existing session
+        const { data } = await supabase.auth.getSession();
+        if (data.session) {
+          setHasSession(true);
+        } else {
+          // Listen for session established via hash fragment
+          const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+            if (session) {
+              setHasSession(true);
+            }
+          });
+          return () => {
+            authListener.subscription.unsubscribe();
+          };
+        }
       }
     };
+    
     checkSession();
   }, []);
 
@@ -39,6 +66,12 @@ function ResetPasswordPage() {
       return;
     }
 
+    if (!hasSession) {
+      setError("Sessão não encontrada. O link pode ter expirado. Solicite um novo na tela de login.");
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
@@ -47,8 +80,10 @@ function ResetPasswordPage() {
       setTimeout(() => {
         navigate({ to: "/login" });
       }, 2000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Falha ao atualizar senha");
+    } catch (err: any) {
+      setError(err?.message === "Auth session missing!" 
+        ? "Sessão inválida ou expirada. Solicite um novo link de redefinição."
+        : (err instanceof Error ? err.message : "Falha ao atualizar senha"));
     } finally {
       setIsLoading(false);
     }
@@ -61,7 +96,7 @@ function ResetPasswordPage() {
           <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
             <Shield className="w-6 h-6 text-white" />
           </div>
-          <span className="text-xl font-bold text-foreground">Dicoonseguros</span>
+          <span className="text-xl font-bold text-foreground">Dicoon Seguros</span>
         </div>
 
         <div className="rounded-2xl border border-border bg-card p-8 shadow-elegant">
@@ -108,7 +143,7 @@ function ResetPasswordPage() {
 
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || !hasSession}
               className="w-full mt-6 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isLoading ? (
