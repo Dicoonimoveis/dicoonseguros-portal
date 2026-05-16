@@ -205,7 +205,7 @@ function ImportarApolicePage() {
           cpf: form.cpf_cnpj ?? null,
           phone: form.telefone ?? null,
           address: form.endereco ?? null,
-          name: form.nome_cliente ?? null,
+          name: form.nome_cliente ?? undefined,
         }).eq("user_id", clientUserId);
       }
 
