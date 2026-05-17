@@ -78,6 +78,7 @@ function ImportarApolicePage() {
   const [existingClient, setExistingClient] = useState<ExistingClient | null>(null);
   const [form, setForm] = useState<Extracted>({});
   const [saving, setSaving] = useState(false);
+  const invite = useServerFn(inviteClient);
   const [error, setError] = useState<string | null>(null);
   const [savedSummary, setSavedSummary] = useState<{ policyNumber: string; clientName: string; dueDate: string; clientUserId: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
