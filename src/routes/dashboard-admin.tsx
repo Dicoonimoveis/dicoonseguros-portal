@@ -1326,6 +1326,7 @@ function ImportarPlanilhaView({ onReload }: { onReload: () => void }) {
   const [rows, setRows] = useState<ImportRow[]>([]);
   const [processing, setProcessing] = useState(false);
   const [result, setResult] = useState<string | null>(null);
+  const invite = useServerFn(inviteClient);
 
   const handleFile = async (f: File) => {
     if (f.size > 20 * 1024 * 1024) { alert("Máximo 20 MB"); return; }
