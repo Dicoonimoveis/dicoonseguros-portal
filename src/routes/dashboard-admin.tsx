@@ -607,9 +607,12 @@ function NovoClienteModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
         <Input label="Telefone" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} />
         <Input label="Data de nascimento" type="date" value={form.birth_date} onChange={(v) => setForm({ ...form, birth_date: v })} />
         <Input label="Endereço" value={form.address} onChange={(v) => setForm({ ...form, address: v })} />
-        <Input label="Senha inicial" type="text" value={form.password} onChange={(v) => setForm({ ...form, password: v })} placeholder="Deixe em branco para gerar" />
       </div>
+      <p className="text-xs text-gray-500 mt-3">
+        O cliente receberá um e-mail com um link seguro para definir a própria senha. Nenhuma senha é gerada ou exibida aqui.
+      </p>
       {err && <p className="text-sm text-red-600 mt-3">{err}</p>}
+      {info && <p className="text-sm text-emerald-700 mt-3">{info}</p>}
       <div className="flex justify-end gap-2 mt-5">
         <button onClick={onClose} className="px-4 py-2 rounded-md border border-gray-300 text-sm font-medium text-gray-700 bg-white">Cancelar</button>
         <button onClick={save} disabled={saving || !form.name || !form.email} className="px-4 py-2 rounded-md text-sm font-semibold text-white disabled:opacity-60" style={{ backgroundColor: PRIMARY }}>
