@@ -785,34 +785,185 @@ function ContactCard({ icon, iconBg, iconColor, label, value, actionLabel, href 
 }
 
 /* ============== PROFILE VIEW ============== */
-function ProfileView({ profile, initials }: { profile: Profile | null; initials: string; onProfileChange: () => void }) {
+function ProfileView({ profile, initials, onProfileChange }: { profile: Profile | null; initials: string; onProfileChange: () => void }) {
+  const [cpf, setCpf] = useState("");
+  const [birthDate, setBirthDate] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+
+  // Sync state with profile data on load/update
+  useEffect(() => {
+    if (profile) {
+      setCpf(profile.cpf ?? "");
+      setBirthDate(profile.birth_date ?? "");
+      setPhone(profile.phone ?? "");
+      setAddress(profile.address ?? "");
+    }
+  }, [profile]);
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!profile?.user_id) return;
+    setSaving(true);
+    setMsg(null);
+
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          cpf: cpf.trim() || null,
+          birth_date: birthDate || null,
+          phone: phone.trim() || null,
+          address: address.trim() || null,
+        })
+        .eq("user_id", profile.user_id);
+
+      if (error) throw error;
+
+      setMsg({ type: "ok", text: "Dados atualizados com sucesso!" });
+      onProfileChange(); // Trigger parent loadCore to sync state
+
+      // Clear success message after 3 seconds
+      setTimeout(() => setMsg(null), 3000);
+    } catch (err: any) {
+      console.error("Erro ao salvar perfil:", err);
+      setMsg({ type: "err", text: err.message ?? "Erro ao salvar alterações." });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <>
       <SectionTitle>Dados pessoais</SectionTitle>
       <div className="max-w-2xl">
-        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-          <div className="flex items-center gap-4 mb-5 pb-5 border-b border-gray-100">
-            <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-semibold shrink-0" style={{ backgroundColor: PRIMARY }}>{initials}</div>
+        <form onSubmit={handleSave} className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm space-y-5">
+          <div className="flex items-center gap-4 pb-4 border-b border-gray-100">
+            <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-semibold shrink-0" style={{ backgroundColor: PRIMARY }}>
+              {initials}
+            </div>
             <div>
               <p className="text-base font-semibold text-gray-900">{profile?.name ?? "—"}</p>
               <p className="text-xs text-gray-500">{profile?.email ?? "—"}</p>
             </div>
           </div>
-          <dl className="space-y-4 text-sm mb-6">
-            <Row label="Nome completo" value={profile?.name} />
-            <Row label="CPF" value={profile?.cpf} />
-            <Row label="Data de nascimento" value={profile?.birth_date ? formatDate(profile.birth_date) : null} />
-            <Row label="Telefone" value={profile?.phone} />
-            <Row label="E-mail" value={profile?.email} />
-            <Row label="Endereço" value={profile?.address} />
-          </dl>
-          <a href={WHATSAPP_LINK} target="_blank" rel="noreferrer" className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-sm font-semibold text-white hover:brightness-110 transition" style={{ backgroundColor: WHATSAPP }}>
-            <MessageCircle className="w-4 h-4" /> Solicitar atualização via WhatsApp
-          </a>
-          <p className="text-xs text-gray-400 text-center mt-4">
-            Para atualizar sua senha ou dados cadastrais, entre em contato direto com o seu corretor.
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Nome Completo (Leitura) */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Nome completo</label>
+              <input
+                type="text"
+                value={profile?.name ?? ""}
+                disabled
+                className="w-full text-sm rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-gray-500 cursor-not-allowed outline-none"
+              />
+            </div>
+
+            {/* E-mail (Leitura) */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">E-mail</label>
+              <input
+                type="email"
+                value={profile?.email ?? ""}
+                disabled
+                className="w-full text-sm rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-gray-500 cursor-not-allowed outline-none"
+              />
+            </div>
+
+            {/* CPF */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase tracking-wider">CPF</label>
+              <input
+                type="text"
+                value={cpf}
+                onChange={(e) => setCpf(e.target.value)}
+                placeholder="Ex: 000.000.000-00"
+                className="w-full text-sm rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-offset-1 transition"
+                style={{ "--tw-ring-color": PRIMARY } as React.CSSProperties}
+              />
+            </div>
+
+            {/* Data de Nascimento */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase tracking-wider">Data de nascimento</label>
+              <input
+                type="date"
+                value={birthDate}
+                onChange={(e) => setBirthDate(e.target.value)}
+                className="w-full text-sm rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-offset-1 transition"
+                style={{ "--tw-ring-color": PRIMARY } as React.CSSProperties}
+              />
+            </div>
+
+            {/* Telefone */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase tracking-wider">Telefone</label>
+              <input
+                type="text"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="Ex: (51) 99999-9999"
+                className="w-full text-sm rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-offset-1 transition"
+                style={{ "--tw-ring-color": PRIMARY } as React.CSSProperties}
+              />
+            </div>
+
+            {/* Endereço */}
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase tracking-wider">Endereço</label>
+              <input
+                type="text"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="Rua, número, bairro, cidade - UF"
+                className="w-full text-sm rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-offset-1 transition"
+                style={{ "--tw-ring-color": PRIMARY } as React.CSSProperties}
+              />
+            </div>
+          </div>
+
+          {msg && (
+            <div
+              className="flex items-center gap-2 text-xs px-3 py-2.5 rounded-lg border transition animate-pulse"
+              style={
+                msg.type === "ok"
+                  ? { backgroundColor: "#E6F4EA", borderColor: "#A3CFBB", color: "#137333" }
+                  : { backgroundColor: "#FCE8E6", borderColor: "#F5C2C7", color: "#C5221F" }
+              }
+            >
+              {msg.type === "ok" ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <XCircle className="w-4 h-4 shrink-0" />}
+              <span className="font-medium">{msg.text}</span>
+            </div>
+          )}
+
+          <div className="flex flex-col sm:flex-row gap-3 pt-2">
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-white hover:brightness-110 disabled:opacity-60 transition shadow-sm"
+              style={{ backgroundColor: PRIMARY }}
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+              Salvar Alterações
+            </button>
+            <a
+              href={WHATSAPP_LINK}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-white hover:brightness-110 transition shadow-sm"
+              style={{ backgroundColor: WHATSAPP }}
+            >
+              <MessageCircle className="w-4 h-4" /> Falar com Corretor
+            </a>
+          </div>
+
+          <p className="text-[11px] text-gray-400 text-center">
+            Qualquer alteração em seus dados será imediatamente sincronizada com a corretora.
           </p>
-        </div>
+        </form>
       </div>
     </>
   );
