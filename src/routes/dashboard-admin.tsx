@@ -187,15 +187,7 @@ function AdminDashboard() {
             setIsSidebarOpen(false);
           }}
         />
-        <NavItem
-          icon={<Users className="w-4 h-4" />}
-          label="Cadastro Cliente"
-          active={active === "cadastro_cliente"}
-          onClick={() => {
-            setActive("cadastro_cliente");
-            setIsSidebarOpen(false);
-          }}
-        />
+
         <Link
           to="/admin/importar-apolice"
           onClick={() => setIsSidebarOpen(false)}
