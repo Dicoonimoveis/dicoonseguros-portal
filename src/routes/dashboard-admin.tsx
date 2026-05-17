@@ -133,12 +133,33 @@ function AdminDashboard() {
         </div>
       </header>
 
+      {/* Mobile Overlay */}
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-20 md:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="fixed top-16 bottom-0 left-0 w-[195px] bg-gray-50 border-r border-gray-200 z-20 py-4 px-3 hidden md:block overflow-y-auto">
+      <aside
+        className={`fixed top-16 bottom-0 left-0 w-[195px] bg-gray-50 border-r border-gray-200 z-20 py-4 px-3 overflow-y-auto transition-transform duration-200 ease-in-out md:translate-x-0 ${
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
         <SectionLabel>Geral</SectionLabel>
-        <NavItem icon={<LayoutDashboard className="w-4 h-4" />} label="Dashboard" active={active === "dashboard"} onClick={() => setActive("dashboard")} />
+        <NavItem
+          icon={<LayoutDashboard className="w-4 h-4" />}
+          label="Dashboard"
+          active={active === "dashboard"}
+          onClick={() => {
+            setActive("dashboard");
+            setIsSidebarOpen(false);
+          }}
+        />
         <Link
           to="/admin/importar-apolice"
+          onClick={() => setIsSidebarOpen(false)}
           className="mx-1 my-2 flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-white shadow-sm hover:brightness-110 transition"
           style={{ backgroundColor: PRIMARY }}
         >
@@ -146,20 +167,85 @@ function AdminDashboard() {
         </Link>
 
         <SectionLabel>Gestão</SectionLabel>
-        <NavItem icon={<Users className="w-4 h-4" />} label="Clientes" active={active === "clientes"} onClick={() => setActive("clientes")} />
-        <NavItem icon={<FileText className="w-4 h-4" />} label="Apólices" active={active === "apolices"} onClick={() => setActive("apolices")} />
-        <NavItem icon={<CalendarClock className="w-4 h-4" />} label="Vencimentos" active={active === "vencimentos"} onClick={() => setActive("vencimentos")} badge={urgent.length} />
-        <NavItem icon={<AlertTriangle className="w-4 h-4" />} label="Sinistros" active={active === "sinistros"} onClick={() => setActive("sinistros")} />
+        <NavItem
+          icon={<Users className="w-4 h-4" />}
+          label="Clientes"
+          active={active === "clientes"}
+          onClick={() => {
+            setActive("clientes");
+            setIsSidebarOpen(false);
+          }}
+        />
+        <NavItem
+          icon={<FileText className="w-4 h-4" />}
+          label="Apólices"
+          active={active === "apolices"}
+          onClick={() => {
+            setActive("apolices");
+            setIsSidebarOpen(false);
+          }}
+        />
+        <NavItem
+          icon={<CalendarClock className="w-4 h-4" />}
+          label="Vencimentos"
+          active={active === "vencimentos"}
+          onClick={() => {
+            setActive("vencimentos");
+            setIsSidebarOpen(false);
+          }}
+          badge={urgent.length}
+        />
+        <NavItem
+          icon={<AlertTriangle className="w-4 h-4" />}
+          label="Sinistros"
+          active={active === "sinistros"}
+          onClick={() => {
+            setActive("sinistros");
+            setIsSidebarOpen(false);
+          }}
+        />
 
         <SectionLabel>Arquivos</SectionLabel>
-        <NavItem icon={<FileText className="w-4 h-4" />} label="Documentos" active={active === "documentos"} onClick={() => setActive("documentos")} />
-        <NavItem icon={<FileSpreadsheet className="w-4 h-4" />} label="Importar planilha" active={active === "importar"} onClick={() => setActive("importar")} />
+        <NavItem
+          icon={<FileText className="w-4 h-4" />}
+          label="Documentos"
+          active={active === "documentos"}
+          onClick={() => {
+            setActive("documentos");
+            setIsSidebarOpen(false);
+          }}
+        />
+        <NavItem
+          icon={<FileSpreadsheet className="w-4 h-4" />}
+          label="Importar planilha"
+          active={active === "importar"}
+          onClick={() => {
+            setActive("importar");
+            setIsSidebarOpen(false);
+          }}
+        />
 
         <SectionLabel>Análise</SectionLabel>
-        <NavItem icon={<BarChart3 className="w-4 h-4" />} label="Relatórios" active={active === "relatorios"} onClick={() => setActive("relatorios")} />
+        <NavItem
+          icon={<BarChart3 className="w-4 h-4" />}
+          label="Relatórios"
+          active={active === "relatorios"}
+          onClick={() => {
+            setActive("relatorios");
+            setIsSidebarOpen(false);
+          }}
+        />
 
         <SectionLabel>Sistema</SectionLabel>
-        <NavItem icon={<Settings className="w-4 h-4" />} label="Configurações" active={active === "configuracoes"} onClick={() => setActive("configuracoes")} />
+        <NavItem
+          icon={<Settings className="w-4 h-4" />}
+          label="Configurações"
+          active={active === "configuracoes"}
+          onClick={() => {
+            setActive("configuracoes");
+            setIsSidebarOpen(false);
+          }}
+        />
       </aside>
 
       {/* Main */}
@@ -241,31 +327,33 @@ function DashboardView({
       <ExpiryTable rows={urgent} tone="urgent" />
 
       <h2 className="text-sm font-semibold text-gray-800 mt-8 mb-3">Últimos clientes cadastrados</h2>
-      <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
-        <table className="w-full text-sm">
-          <thead><tr className="text-left text-xs text-gray-500 uppercase tracking-wide">
-            <th className="px-4 py-3 font-medium">Nome</th>
-            <th className="px-4 py-3 font-medium">Cadastro</th>
-            <th className="px-4 py-3 font-medium">Apólices</th>
-            <th className="px-4 py-3 font-medium">Status</th>
-          </tr></thead>
-          <tbody>
-            {recentClients.map((c, i) => {
-              const count = policies.filter((p) => p.user_id === c.user_id).length;
-              return (
-                <tr key={c.user_id} className={i > 0 ? "border-t border-gray-100" : ""}>
-                  <td className="px-4 py-3 font-medium text-gray-900">{c.name}</td>
-                  <td className="px-4 py-3 text-gray-600">{new Date(c.created_at).toLocaleDateString("pt-BR")}</td>
-                  <td className="px-4 py-3 text-gray-600">{count}</td>
-                  <td className="px-4 py-3"><span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">Ativo</span></td>
-                </tr>
-              );
-            })}
-            {recentClients.length === 0 && (
-              <tr><td colSpan={4} className="px-4 py-6 text-center text-sm text-gray-400">Nenhum cliente ainda.</td></tr>
-            )}
-          </tbody>
-        </table>
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[500px]">
+            <thead><tr className="text-left text-xs text-gray-500 uppercase tracking-wide">
+              <th className="px-4 py-3 font-medium">Nome</th>
+              <th className="px-4 py-3 font-medium">Cadastro</th>
+              <th className="px-4 py-3 font-medium">Apólices</th>
+              <th className="px-4 py-3 font-medium">Status</th>
+            </tr></thead>
+            <tbody>
+              {recentClients.map((c, i) => {
+                const count = policies.filter((p) => p.user_id === c.user_id).length;
+                return (
+                  <tr key={c.user_id} className={i > 0 ? "border-t border-gray-100" : ""}>
+                    <td className="px-4 py-3 font-medium text-gray-900">{c.name}</td>
+                    <td className="px-4 py-3 text-gray-600">{new Date(c.created_at).toLocaleDateString("pt-BR")}</td>
+                    <td className="px-4 py-3 text-gray-600">{count}</td>
+                    <td className="px-4 py-3"><span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">Ativo</span></td>
+                  </tr>
+                );
+              })}
+              {recentClients.length === 0 && (
+                <tr><td colSpan={4} className="px-4 py-6 text-center text-sm text-gray-400">Nenhum cliente ainda.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </>
   );
@@ -285,12 +373,12 @@ function AlertBanner({ tone, title, action }: { tone: "red" | "amber"; title: st
     ? { bg: "#FEF2F2", border: "#FECACA", color: "#991B1B" }
     : { bg: "#FFFBEB", border: "#FDE68A", color: "#92400E" };
   return (
-    <div className="rounded-xl p-4 flex items-center justify-between gap-4" style={{ backgroundColor: styles.bg, border: `1px solid ${styles.border}` }}>
+    <div className="rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4" style={{ backgroundColor: styles.bg, border: `1px solid ${styles.border}` }}>
       <div className="flex items-center gap-3">
-        <AlertTriangle className="w-5 h-5" style={{ color: styles.color }} />
-        <p className="text-sm font-medium" style={{ color: styles.color }}>{title}</p>
+        <AlertTriangle className="w-5 h-5 shrink-0" style={{ color: styles.color }} />
+        <p className="text-sm font-medium leading-relaxed" style={{ color: styles.color }}>{title}</p>
       </div>
-      {action}
+      {action && <div className="shrink-0">{action}</div>}
     </div>
   );
 }
@@ -304,36 +392,38 @@ function ExpiryTable({
     : { backgroundColor: "#FEF3C7", color: "#B45309" };
 
   return (
-    <div className="rounded-xl border border-gray-200 overflow-hidden shadow-sm" style={{ backgroundColor: wrapperBg }}>
-      <table className="w-full text-sm">
-        <thead><tr className="text-left text-xs text-gray-500 uppercase tracking-wide">
-          <th className="px-4 py-3 font-medium">Cliente</th>
-          <th className="px-4 py-3 font-medium">Apólice</th>
-          <th className="px-4 py-3 font-medium">Tipo</th>
-          <th className="px-4 py-3 font-medium">Vencimento</th>
-          <th className="px-4 py-3 font-medium">Prazo</th>
-          <th className="px-4 py-3 font-medium text-right">Ações</th>
-        </tr></thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={r.id} className={i > 0 ? "border-t border-gray-100" : ""}>
-              <td className="px-4 py-3 text-gray-900 font-medium">{r.client?.name ?? "—"}</td>
-              <td className="px-4 py-3 text-gray-600">{r.policy_number}</td>
-              <td className="px-4 py-3 text-gray-600">{r.policy_type}</td>
-              <td className="px-4 py-3 text-gray-600">{new Date(r.end_date).toLocaleDateString("pt-BR")}</td>
-              <td className="px-4 py-3"><span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold" style={badgeStyle}>{r.daysToExpiry} dias</span></td>
-              <td className="px-4 py-3 text-right">
-                <a href={WA_LINK} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-semibold text-white" style={{ backgroundColor: WHATSAPP }}>
-                  <MessageCircle className="w-3 h-3" /> WhatsApp
-                </a>
-              </td>
-            </tr>
-          ))}
-          {rows.length === 0 && (
-            <tr><td colSpan={6} className="px-4 py-6 text-center text-sm text-gray-400">Nenhum vencimento neste período.</td></tr>
-          )}
-        </tbody>
-      </table>
+    <div className="rounded-xl border border-gray-200 shadow-sm overflow-hidden" style={{ backgroundColor: wrapperBg }}>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-[600px]">
+          <thead><tr className="text-left text-xs text-gray-500 uppercase tracking-wide">
+            <th className="px-4 py-3 font-medium">Cliente</th>
+            <th className="px-4 py-3 font-medium">Apólice</th>
+            <th className="px-4 py-3 font-medium">Tipo</th>
+            <th className="px-4 py-3 font-medium">Vencimento</th>
+            <th className="px-4 py-3 font-medium">Prazo</th>
+            <th className="px-4 py-3 font-medium text-right">Ações</th>
+          </tr></thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={r.id} className={i > 0 ? "border-t border-gray-100" : ""}>
+                <td className="px-4 py-3 text-gray-900 font-medium">{r.client?.name ?? "—"}</td>
+                <td className="px-4 py-3 text-gray-600">{r.policy_number}</td>
+                <td className="px-4 py-3 text-gray-600">{r.policy_type}</td>
+                <td className="px-4 py-3 text-gray-600">{new Date(r.end_date).toLocaleDateString("pt-BR")}</td>
+                <td className="px-4 py-3"><span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold" style={badgeStyle}>{r.daysToExpiry} dias</span></td>
+                <td className="px-4 py-3 text-right">
+                  <a href={WA_LINK} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-semibold text-white" style={{ backgroundColor: WHATSAPP }}>
+                    <MessageCircle className="w-3 h-3" /> WhatsApp
+                  </a>
+                </td>
+              </tr>
+            ))}
+            {rows.length === 0 && (
+              <tr><td colSpan={6} className="px-4 py-6 text-center text-sm text-gray-400">Nenhum vencimento neste período.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -366,35 +456,37 @@ function ClientesView({ profiles, policies, onReload }: { profiles: Profile[]; p
         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nome, CPF ou e-mail" className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 text-sm bg-white" />
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-        <table className="w-full text-sm">
-          <thead><tr className="text-left text-xs text-gray-500 uppercase tracking-wide">
-            <th className="px-4 py-3 font-medium">Nome</th>
-            <th className="px-4 py-3 font-medium">CPF/CNPJ</th>
-            <th className="px-4 py-3 font-medium">E-mail</th>
-            <th className="px-4 py-3 font-medium">Apólices</th>
-            <th className="px-4 py-3 font-medium text-right">Ações</th>
-          </tr></thead>
-          <tbody>
-            {filtered.map((c, i) => {
-              const count = policies.filter((p) => p.user_id === c.user_id).length;
-              return (
-                <tr key={c.user_id} className={i > 0 ? "border-t border-gray-100" : ""}>
-                  <td className="px-4 py-3 font-medium text-gray-900">{c.name}</td>
-                  <td className="px-4 py-3 text-gray-600">{c.cpf ?? "—"}</td>
-                  <td className="px-4 py-3 text-gray-600">{c.email}</td>
-                  <td className="px-4 py-3 text-gray-600">{count}</td>
-                  <td className="px-4 py-3 text-right">
-                    <button onClick={() => setViewing(c)} className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs text-gray-700 hover:bg-gray-100">
-                      <Eye className="w-3 h-3" /> Ver
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-            {filtered.length === 0 && <tr><td colSpan={5} className="px-4 py-6 text-center text-sm text-gray-400">Nenhum cliente encontrado.</td></tr>}
-          </tbody>
-        </table>
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[600px]">
+            <thead><tr className="text-left text-xs text-gray-500 uppercase tracking-wide">
+              <th className="px-4 py-3 font-medium">Nome</th>
+              <th className="px-4 py-3 font-medium">CPF/CNPJ</th>
+              <th className="px-4 py-3 font-medium">E-mail</th>
+              <th className="px-4 py-3 font-medium">Apólices</th>
+              <th className="px-4 py-3 font-medium text-right">Ações</th>
+            </tr></thead>
+            <tbody>
+              {filtered.map((c, i) => {
+                const count = policies.filter((p) => p.user_id === c.user_id).length;
+                return (
+                  <tr key={c.user_id} className={i > 0 ? "border-t border-gray-100" : ""}>
+                    <td className="px-4 py-3 font-medium text-gray-900">{c.name}</td>
+                    <td className="px-4 py-3 text-gray-600">{c.cpf ?? "—"}</td>
+                    <td className="px-4 py-3 text-gray-600">{c.email}</td>
+                    <td className="px-4 py-3 text-gray-600">{count}</td>
+                    <td className="px-4 py-3 text-right">
+                      <button onClick={() => setViewing(c)} className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs text-gray-700 hover:bg-gray-100">
+                        <Eye className="w-3 h-3" /> Ver
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+              {filtered.length === 0 && <tr><td colSpan={5} className="px-4 py-6 text-center text-sm text-gray-400">Nenhum cliente encontrado.</td></tr>}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {showNew && <NovoClienteModal onClose={() => setShowNew(false)} onSaved={() => { setShowNew(false); onReload(); }} />}
@@ -531,39 +623,41 @@ function ApolicesView({
         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por apólice ou cliente" className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 text-sm bg-white" />
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-        <table className="w-full text-sm">
-          <thead><tr className="text-left text-xs text-gray-500 uppercase tracking-wide">
-            <th className="px-4 py-3 font-medium">Apólice</th>
-            <th className="px-4 py-3 font-medium">Cliente</th>
-            <th className="px-4 py-3 font-medium">Tipo</th>
-            <th className="px-4 py-3 font-medium">Seguradora</th>
-            <th className="px-4 py-3 font-medium">Vencimento</th>
-            <th className="px-4 py-3 font-medium">PDF</th>
-            <th className="px-4 py-3 font-medium">Status</th>
-          </tr></thead>
-          <tbody>
-            {filtered.map((p, i) => {
-              const hasDoc = policyDocs.some((d) => d.policy_id === p.id);
-              return (
-                <tr key={p.id} className={i > 0 ? "border-t border-gray-100" : ""}>
-                  <td className="px-4 py-3 font-medium text-gray-900">{p.policy_number}</td>
-                  <td className="px-4 py-3 text-gray-600">{p.client?.name ?? "—"}</td>
-                  <td className="px-4 py-3 text-gray-600">{p.policy_type}</td>
-                  <td className="px-4 py-3 text-gray-600">{p.insurer}</td>
-                  <td className="px-4 py-3 text-gray-600">{new Date(p.end_date).toLocaleDateString("pt-BR")}</td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${hasDoc ? "bg-emerald-100 text-emerald-700" : "bg-gray-200 text-gray-600"}`}>
-                      {hasDoc ? "Anexado" : "Pendente"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3"><span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">{p.status}</span></td>
-                </tr>
-              );
-            })}
-            {filtered.length === 0 && <tr><td colSpan={7} className="px-4 py-6 text-center text-sm text-gray-400">Nenhuma apólice ainda.</td></tr>}
-          </tbody>
-        </table>
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[700px]">
+            <thead><tr className="text-left text-xs text-gray-500 uppercase tracking-wide">
+              <th className="px-4 py-3 font-medium">Apólice</th>
+              <th className="px-4 py-3 font-medium">Cliente</th>
+              <th className="px-4 py-3 font-medium">Tipo</th>
+              <th className="px-4 py-3 font-medium">Seguradora</th>
+              <th className="px-4 py-3 font-medium">Vencimento</th>
+              <th className="px-4 py-3 font-medium">PDF</th>
+              <th className="px-4 py-3 font-medium">Status</th>
+            </tr></thead>
+            <tbody>
+              {filtered.map((p, i) => {
+                const hasDoc = policyDocs.some((d) => d.policy_id === p.id);
+                return (
+                  <tr key={p.id} className={i > 0 ? "border-t border-gray-100" : ""}>
+                    <td className="px-4 py-3 font-medium text-gray-900">{p.policy_number}</td>
+                    <td className="px-4 py-3 text-gray-600">{p.client?.name ?? "—"}</td>
+                    <td className="px-4 py-3 text-gray-600">{p.policy_type}</td>
+                    <td className="px-4 py-3 text-gray-600">{p.insurer}</td>
+                    <td className="px-4 py-3 text-gray-600">{new Date(p.end_date).toLocaleDateString("pt-BR")}</td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${hasDoc ? "bg-emerald-100 text-emerald-700" : "bg-gray-200 text-gray-600"}`}>
+                        {hasDoc ? "Anexado" : "Pendente"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3"><span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">{p.status}</span></td>
+                  </tr>
+                );
+              })}
+              {filtered.length === 0 && <tr><td colSpan={7} className="px-4 py-6 text-center text-sm text-gray-400">Nenhuma apólice ainda.</td></tr>}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {showNew && <NovaApoliceModal profiles={profiles} onClose={() => setShowNew(false)} onSaved={() => { setShowNew(false); onReload(); }} />}
@@ -766,35 +860,37 @@ function SinistrosView({ profiles, policies, claims, onReload }: {
         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por protocolo" className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 text-sm bg-white" />
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-        <table className="w-full text-sm">
-          <thead><tr className="text-left text-xs text-gray-500 uppercase tracking-wide">
-            <th className="px-4 py-3 font-medium">Protocolo</th>
-            <th className="px-4 py-3 font-medium">Cliente</th>
-            <th className="px-4 py-3 font-medium">Tipo</th>
-            <th className="px-4 py-3 font-medium">Abertura</th>
-            <th className="px-4 py-3 font-medium">Status</th>
-            <th className="px-4 py-3 font-medium text-right">Ações</th>
-          </tr></thead>
-          <tbody>
-            {filtered.map((c, i) => {
-              const client = profiles.find((p) => p.user_id === c.user_id);
-              return (
-                <tr key={c.id} className={i > 0 ? "border-t border-gray-100" : ""}>
-                  <td className="px-4 py-3 font-medium text-gray-900">{c.protocol}</td>
-                  <td className="px-4 py-3 text-gray-600">{client?.name ?? "—"}</td>
-                  <td className="px-4 py-3 text-gray-600">{c.event_type}</td>
-                  <td className="px-4 py-3 text-gray-600">{new Date(c.event_date).toLocaleDateString("pt-BR")}</td>
-                  <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${statusColor(c.status)}`}>{statusLabel(c.status)}</span></td>
-                  <td className="px-4 py-3 text-right">
-                    <SinistroManageButton claim={c} onSaved={onReload} statusColor={statusColor} statusLabel={statusLabel} />
-                  </td>
-                </tr>
-              );
-            })}
-            {filtered.length === 0 && <tr><td colSpan={6} className="px-4 py-6 text-center text-sm text-gray-400">Nenhum sinistro registrado.</td></tr>}
-          </tbody>
-        </table>
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[600px]">
+            <thead><tr className="text-left text-xs text-gray-500 uppercase tracking-wide">
+              <th className="px-4 py-3 font-medium">Protocolo</th>
+              <th className="px-4 py-3 font-medium">Cliente</th>
+              <th className="px-4 py-3 font-medium">Tipo</th>
+              <th className="px-4 py-3 font-medium">Abertura</th>
+              <th className="px-4 py-3 font-medium">Status</th>
+              <th className="px-4 py-3 font-medium text-right">Ações</th>
+            </tr></thead>
+            <tbody>
+              {filtered.map((c, i) => {
+                const client = profiles.find((p) => p.user_id === c.user_id);
+                return (
+                  <tr key={c.id} className={i > 0 ? "border-t border-gray-100" : ""}>
+                    <td className="px-4 py-3 font-medium text-gray-900">{c.protocol}</td>
+                    <td className="px-4 py-3 text-gray-600">{client?.name ?? "—"}</td>
+                    <td className="px-4 py-3 text-gray-600">{c.event_type}</td>
+                    <td className="px-4 py-3 text-gray-600">{new Date(c.event_date).toLocaleDateString("pt-BR")}</td>
+                    <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${statusColor(c.status)}`}>{statusLabel(c.status)}</span></td>
+                    <td className="px-4 py-3 text-right">
+                      <SinistroManageButton claim={c} onSaved={onReload} statusColor={statusColor} statusLabel={statusLabel} />
+                    </td>
+                  </tr>
+                );
+              })}
+              {filtered.length === 0 && <tr><td colSpan={6} className="px-4 py-6 text-center text-sm text-gray-400">Nenhum sinistro registrado.</td></tr>}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {showNew && <NovoSinistroModal profiles={profiles} policies={policies} onClose={() => setShowNew(false)} onSaved={() => { setShowNew(false); onReload(); }} />}
