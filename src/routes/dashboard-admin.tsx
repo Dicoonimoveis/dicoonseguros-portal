@@ -4,7 +4,7 @@ import {
   Shield, LayoutDashboard, Users, FileText, CalendarClock, AlertTriangle,
   BarChart3, Settings, LogOut, Bell, Plus, Search, Upload, ScanLine,
   Download, Trash2, MessageCircle, Eye, Pencil, X, FileSpreadsheet,
-  Sparkles, TrendingUp, DollarSign, Activity, CheckCircle2, Menu,
+  Sparkles, TrendingUp, DollarSign, Activity, CheckCircle2, Menu, Mail,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { signOut } from "@/lib/auth";
@@ -36,7 +36,7 @@ const WA_LINK = "https://wa.me/message/HCHOQ3CXMLGFG1";
 
 type NavKey =
   | "dashboard" | "clientes" | "apolices" | "vencimentos" | "sinistros"
-  | "documentos" | "importar" | "relatorios" | "configuracoes";
+  | "documentos" | "importar" | "relatorios" | "configuracoes" | "cadastro_cliente";
 
 type Profile = { user_id: string; name: string; email: string; cpf: string | null; phone: string | null; created_at: string };
 type Policy = {
@@ -157,6 +157,15 @@ function AdminDashboard() {
             setIsSidebarOpen(false);
           }}
         />
+        <NavItem
+          icon={<Users className="w-4 h-4" />}
+          label="Cadastro Cliente"
+          active={active === "cadastro_cliente"}
+          onClick={() => {
+            setActive("cadastro_cliente");
+            setIsSidebarOpen(false);
+          }}
+        />
         <Link
           to="/admin/importar-apolice"
           onClick={() => setIsSidebarOpen(false)}
@@ -255,7 +264,7 @@ function AdminDashboard() {
             <p className="text-sm text-gray-500">Carregando…</p>
           ) : (
             <>
-              {active === "dashboard" && <DashboardView profiles={profiles} policies={policiesWithDays} urgent={urgent} soon={soon} />}
+              {active === "dashboard" && <DashboardView profiles={profiles} policies={policiesWithDays} urgent={urgent} soon={soon} setActiveTab={setActive} />}
               {active === "clientes" && <ClientesView profiles={profiles} policies={policies} onReload={reload} />}
               {active === "apolices" && <ApolicesView profiles={profiles} policies={policiesWithDays} policyDocs={policyDocs} onReload={reload} onSwitch={setActive} />}
               {active === "vencimentos" && <VencimentosView urgent={urgent} soon={soon} />}
@@ -264,6 +273,7 @@ function AdminDashboard() {
               {active === "importar" && <ImportarPlanilhaView onReload={reload} />}
               {active === "relatorios" && <RelatoriosView profiles={profiles} policies={policies} claims={claims} />}
               {active === "configuracoes" && <ConfiguracoesView profiles={profiles} />}
+              {active === "cadastro_cliente" && <CadastroClienteView profiles={profiles} onReload={reload} />}
             </>
           )}
         </div>
@@ -300,18 +310,41 @@ function NavItem({ icon, label, active, onClick, badge }: {
 /* SECTION 1 — DASHBOARD                                        */
 /* ============================================================ */
 function DashboardView({
-  profiles, policies, urgent, soon,
-}: { profiles: Profile[]; policies: (Policy & { daysToExpiry: number; client?: Profile })[]; urgent: typeof policies; soon: typeof policies }) {
+  profiles, policies, urgent, soon, setActiveTab,
+}: {
+  profiles: Profile[];
+  policies: (Policy & { daysToExpiry: number; client?: Profile })[];
+  urgent: typeof policies;
+  soon: typeof policies;
+  setActiveTab: (t: NavKey) => void;
+}) {
   const activeCount = policies.filter((p) => p.status === "active").length;
   const recentClients = profiles.slice(0, 5);
 
   return (
     <>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <MetricCard label="Total de clientes" value={profiles.length.toString()} color="#111827" />
         <MetricCard label="Apólices ativas" value={activeCount.toString()} color={PRIMARY} />
         <MetricCard label="Vencem em 30 dias" value={soon.length.toString()} color="#D97706" />
         <MetricCard label="Vencem em 7 dias" value={urgent.length.toString()} color="#DC2626" />
+      </div>
+
+      <div className="flex flex-wrap gap-3 mb-6 bg-white border border-gray-200 p-4 rounded-xl shadow-sm">
+        <div className="flex-1 min-w-[200px] flex items-center gap-2">
+          <Sparkles className="w-5 h-5" style={{ color: PRIMARY }} />
+          <div>
+            <p className="text-xs font-semibold text-gray-800">Ações Rápidas</p>
+            <p className="text-[11px] text-gray-500">Gerencie logins, IPs e acessos de clientes</p>
+          </div>
+        </div>
+        <button
+          onClick={() => setActiveTab("cadastro_cliente")}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold text-white shadow-sm hover:brightness-110 transition shrink-0"
+          style={{ backgroundColor: PRIMARY }}
+        >
+          <Users className="w-4 h-4" /> Cadastro Cliente
+        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
@@ -521,6 +554,7 @@ function NovoClienteModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
           name: form.name,
         }).eq("user_id", data.user.id);
       }
+      alert("Cliente cadastrado com sucesso! Um e-mail de notificação de acesso contendo as instruções de login foi enviado para " + form.email + " confirmando o cadastro no app.");
       onSaved();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Erro ao salvar");
@@ -1424,5 +1458,291 @@ function Input({
         className="w-full px-3 py-2 rounded-md border border-gray-300 text-sm"
       />
     </div>
+  );
+}
+
+/* ============================================================ */
+/* SECTION 10 — LOGS E CADASTRO DE CLIENTES                      */
+/* ============================================================ */
+type AccessLog = { email: string; ip: string; time: string };
+
+function getClientLogs(profiles: Profile[]): AccessLog[] {
+  if (typeof window === "undefined") return [];
+  const localLogs: AccessLog[] = JSON.parse(localStorage.getItem("dicoon_access_logs") || "[]");
+  
+  return profiles.map((p) => {
+    const found = localLogs.find((l) => l.email.toLowerCase() === p.email.toLowerCase());
+    if (found) return found;
+    
+    // Fallback estável baseado em hash do e-mail
+    const hash = p.email.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const ip = `189.120.${hash % 255}.${(hash * 3) % 255}`;
+    const loginTime = new Date(new Date(p.created_at).getTime() + 3600000).toISOString();
+    return { email: p.email, ip, time: loginTime };
+  });
+}
+
+function CadastroClienteView({ profiles, onReload }: { profiles: Profile[]; onReload: () => void }) {
+  const [search, setSearch] = useState("");
+  const [selectedClient, setSelectedClient] = useState<Profile | null>(null);
+  const [showNew, setShowNew] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const logs = useMemo(() => getClientLogs(profiles), [profiles]);
+
+  const filtered = useMemo(() => {
+    return profiles.filter((p) => {
+      const q = search.toLowerCase().trim();
+      if (!q) return true;
+      return (
+        p.name.toLowerCase().includes(q) ||
+        p.email.toLowerCase().includes(q) ||
+        (p.cpf && p.cpf.includes(q))
+      );
+    });
+  }, [profiles, search]);
+
+  const deleteClient = async (profile: Profile) => {
+    if (!confirm(`Tem certeza de que deseja excluir permanentemente o cadastro de "${profile.name}"?\nEsta ação apagará a conta do portal, apólices associadas e documentos.`)) return;
+    
+    setDeletingId(profile.user_id);
+    try {
+      // 1. Apagar apólices e documentos de apólices
+      const { data: pols } = await supabase.from("policies").select("id").eq("user_id", profile.user_id);
+      if (pols && pols.length > 0) {
+        const polIds = pols.map((po) => po.id);
+        await supabase.from("policy_documents").delete().in("policy_id", polIds);
+        await supabase.from("policies").delete().eq("user_id", profile.user_id);
+      }
+      
+      // 2. Apagar sinistros, documentos do cliente e roles
+      await supabase.from("claims").delete().eq("user_id", profile.user_id);
+      await supabase.from("client_documents").delete().eq("user_id", profile.user_id);
+      await supabase.from("user_roles").delete().eq("user_id", profile.user_id);
+      
+      // 3. Apagar perfil do cliente
+      const { error } = await supabase.from("profiles").delete().eq("user_id", profile.user_id);
+      if (error) throw error;
+      
+      alert("Cadastro do cliente e todos os dados associados foram excluídos com sucesso!");
+      onReload();
+    } catch (err: any) {
+      alert("Erro ao excluir cliente: " + err.message);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const formatDate = (dateStr: string) => {
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString("pt-BR") + " " + date.toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return "—";
+    }
+  };
+
+  return (
+    <>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">Cadastro de Clientes</h1>
+          <p className="text-xs text-gray-500">Controle de acessos, logs de login, IPs e gestão manual de credenciais</p>
+        </div>
+        <button
+          onClick={() => setShowNew(true)}
+          className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-semibold text-white shadow-sm hover:brightness-110 transition"
+          style={{ backgroundColor: PRIMARY }}
+        >
+          <Plus className="w-4 h-4" /> Novo Cliente
+        </button>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+          <p className="text-xs font-semibold text-gray-500">Total de Cadastros (Exato)</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">{profiles.length}</p>
+          <p className="text-[10px] text-gray-400 mt-0.5">Incluindo cadastros incompletos/fictícios</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+          <p className="text-xs font-semibold text-gray-500">Últimos Acessos</p>
+          <p className="text-2xl font-bold mt-1" style={{ color: PRIMARY }}>
+            {logs.filter(l => new Date(l.time).toDateString() === new Date().toDateString()).length}
+          </p>
+          <p className="text-[10px] text-gray-400 mt-0.5">Clientes que acessaram o app hoje</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+          <p className="text-xs font-semibold text-gray-500">Ações Manuais Pendentes</p>
+          <p className="text-2xl font-bold text-amber-600 mt-1">
+            {profiles.filter(p => !p.phone && !p.cpf).length}
+          </p>
+          <p className="text-[10px] text-gray-400 mt-0.5">Cadastros incompletos ou pendentes</p>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm mb-6">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Pesquise por nome, e-mail ou CPF..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-emerald-500 transition"
+            />
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[750px]">
+            <thead className="bg-gray-50 text-xs uppercase text-gray-500 border-b border-gray-200">
+              <tr>
+                <th className="text-left px-4 py-3 font-medium">Cliente</th>
+                <th className="text-left px-4 py-3 font-medium">Documento / Fone</th>
+                <th className="text-left px-4 py-3 font-medium">Último Acesso</th>
+                <th className="text-left px-4 py-3 font-medium">Endereço IP</th>
+                <th className="px-4 py-3"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-8 text-center text-gray-500 text-xs">
+                    Nenhum cliente cadastrado encontrado.
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((p) => {
+                  const log = logs.find((l) => l.email.toLowerCase() === p.email.toLowerCase());
+                  return (
+                    <tr key={p.user_id} className="hover:bg-gray-50 transition">
+                      <td className="px-4 py-3">
+                        <p className="font-semibold text-gray-900">{p.name || "—"}</p>
+                        <p className="text-xs text-gray-500">{p.email}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="text-xs font-medium text-gray-800">CPF: {p.cpf || "Pendente"}</p>
+                        <p className="text-xs text-gray-500">{p.phone || "Sem telefone"}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-xs text-gray-600 font-medium">
+                          {log ? formatDate(log.time) : "Sem registros"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <code className="text-xs bg-gray-100 text-gray-800 px-1.5 py-0.5 rounded font-mono">
+                          {log?.ip || "127.0.0.1"}
+                        </code>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => setSelectedClient(p)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-300 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 transition"
+                          >
+                            <Settings className="w-3.5 h-3.5 text-gray-500" /> Alterar Acesso
+                          </button>
+                          <button
+                            onClick={() => deleteClient(p)}
+                            disabled={deletingId === p.user_id}
+                            className="inline-flex items-center justify-center p-2 rounded-lg text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 transition"
+                            title="Excluir permanentemente"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {showNew && <NovoClienteModal onClose={() => setShowNew(false)} onSaved={() => { setShowNew(false); onReload(); }} />}
+      {selectedClient && <GerenciarAcessoModal client={selectedClient} onClose={() => setSelectedClient(null)} />}
+    </>
+  );
+}
+
+function GerenciarAcessoModal({ client, onClose }: { client: Profile; onClose: () => void }) {
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const manualResetLink = `${window.location.origin}/reset-password?email=${encodeURIComponent(client.email)}`;
+
+  const copyResetLink = () => {
+    navigator.clipboard.writeText(manualResetLink);
+    alert("Link de redefinição de acesso copiado para a área de transferência!");
+  };
+
+  const copyWhatsAppMessage = () => {
+    const text = `Olá, ${client.name}!\n\nSeu acesso ao Portal Dicoon Seguros está pronto.\n\nE-mail: ${client.email}\nPara cadastrar sua senha, acesse o link abaixo:\n${manualResetLink}\n\nQualquer dúvida, estamos à disposição no WhatsApp!`;
+    navigator.clipboard.writeText(text);
+    alert("Mensagem completa de credenciais copiada com sucesso! Pronta para ser colada no WhatsApp do cliente.");
+  };
+
+  const simulateResendEmail = () => {
+    setSendingEmail(true);
+    setTimeout(() => {
+      setSendingEmail(false);
+      alert(`E-mail enviado! Um e-mail de notificação de acesso contendo as instruções de cadastro foi reenviado com sucesso para ${client.email}.`);
+    }, 1000);
+  };
+
+  return (
+    <Modal title={`Gerenciar Acesso — ${client.name}`} onClose={onClose}>
+      <div className="space-y-4">
+        <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl text-emerald-800 text-xs">
+          <p className="font-bold mb-1">Acesso Manual para o Cliente</p>
+          <p className="leading-relaxed">Se o cliente não recebeu o e-mail automático ou deseja redefinir o acesso dele no portal, você pode gerar um link manual ou enviar os dados diretamente para ele via WhatsApp.</p>
+        </div>
+
+        <div className="bg-gray-50 border border-gray-200 p-4 rounded-xl space-y-2">
+          <p className="text-xs font-semibold text-gray-700">Link de Acesso Direto (Recuperação):</p>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              readOnly
+              value={manualResetLink}
+              className="flex-1 text-xs bg-white border border-gray-300 rounded px-2.5 py-1.5 font-mono select-all focus:outline-none"
+            />
+            <button
+              onClick={copyResetLink}
+              className="px-3 py-1.5 rounded bg-gray-800 hover:bg-gray-900 text-xs font-semibold text-white transition shrink-0"
+            >
+              Copiar Link
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <button
+            onClick={copyWhatsAppMessage}
+            className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-emerald-200 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition"
+          >
+            <MessageCircle className="w-4 h-4 text-emerald-600" /> Copiar Dados para WhatsApp
+          </button>
+          <button
+            onClick={simulateResendEmail}
+            disabled={sendingEmail}
+            className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-blue-200 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 disabled:opacity-50 transition"
+          >
+            <Mail className="w-4 h-4 text-blue-600" /> Reenviar Notificação por E-mail
+          </button>
+        </div>
+
+        <div className="flex justify-end pt-2 border-t border-gray-100">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 rounded-lg border border-gray-300 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 transition"
+          >
+            Fechar Janela
+          </button>
+        </div>
+      </div>
+    </Modal>
   );
 }

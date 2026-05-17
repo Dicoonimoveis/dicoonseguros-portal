@@ -20,7 +20,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { signOut, getCurrentUser, refreshSessionState, onSessionChange } from "@/lib/auth";
+import { signOut, getCurrentUser, refreshSessionState, onSessionChange, logClientAccess } from "@/lib/auth";
 
 export const Route = createFileRoute("/dashboard-cliente")({
   beforeLoad: async () => {
@@ -131,6 +131,12 @@ function ClientDashboard() {
     void refreshSessionState().then((u) => setSessionUser(u));
     return onSessionChange(() => setSessionUser(getCurrentUser()));
   }, []);
+
+  useEffect(() => {
+    if (sessionUser?.email) {
+      logClientAccess(sessionUser.email);
+    }
+  }, [sessionUser]);
 
   const userId = sessionUser?.id;
 

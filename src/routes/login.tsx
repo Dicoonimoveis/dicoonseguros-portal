@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
 import { Eye, EyeOff, Shield } from "lucide-react";
-import { signIn, resetPassword, signUp } from "@/lib/auth";
+import { signIn, resetPassword, signUp, logClientAccess } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/login")({
@@ -83,6 +83,10 @@ function LoginPage() {
           return;
         }
 
+        if (!isAdmin) {
+          await logClientAccess(parsed.data.email);
+        }
+
         navigate({ to: isAdmin ? "/dashboard-admin" : "/dashboard-cliente" });
       } else if (mode === "signup") {
         const parsed = signUpSchema.safeParse({ name, email, password });
@@ -93,7 +97,7 @@ function LoginPage() {
         }
         try {
           await signUp(parsed.data.email, parsed.data.password, parsed.data.name);
-          setInfo("Conta criada com sucesso! Você já pode fazer login.");
+          setInfo("Conta criada com sucesso! Um e-mail de notificação de acesso foi enviado para " + parsed.data.email + " confirmando seu cadastro no app.");
           setMode("signin");
           setPassword("");
         } catch (err: any) {

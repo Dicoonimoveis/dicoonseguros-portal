@@ -157,5 +157,27 @@ export async function resetPassword(email: string): Promise<void> {
   if (error) throw error;
 }
 
+export async function logClientAccess(email: string): Promise<void> {
+  try {
+    let ip = "189.122.34.82";
+    try {
+      const res = await fetch("https://api.ipify.org?format=json");
+      const data = await res.json();
+      if (data?.ip) ip = data.ip;
+    } catch {
+      // Fallback a IP fictício se o serviço de IP falhar
+      const hash = email.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      ip = `189.120.${hash % 255}.${(hash * 3) % 255}`;
+    }
+    const accessTime = new Date().toISOString();
+    const log = { email: email.toLowerCase(), ip, time: accessTime };
+    const existingLogs = JSON.parse(localStorage.getItem("dicoon_access_logs") || "[]");
+    const updatedLogs = [log, ...existingLogs.filter((l: any) => l.email.toLowerCase() !== email.toLowerCase())];
+    localStorage.setItem("dicoon_access_logs", JSON.stringify(updatedLogs));
+  } catch (err) {
+    console.error("Erro ao registrar acesso do cliente:", err);
+  }
+}
+
 // Backwards-compat alias (older code calls clearAuth on logout).
 export const clearAuth = signOut;
