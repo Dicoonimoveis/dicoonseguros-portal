@@ -785,45 +785,20 @@ function ContactCard({ icon, iconBg, iconColor, label, value, actionLabel, href 
 }
 
 /* ============== PROFILE VIEW ============== */
-function ProfileView({ profile, initials, onProfileChange: _onProfileChange }: { profile: Profile | null; initials: string; onProfileChange: () => void }) {
-  const [currentPwd, setCurrentPwd] = useState("");
-  const [newPwd, setNewPwd] = useState("");
-  const [confirmPwd, setConfirmPwd] = useState("");
-  const [pwdMsg, setPwdMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
-  const [saving, setSaving] = useState(false);
-
-  const changePassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setPwdMsg(null);
-    if (newPwd.length < 6) { setPwdMsg({ type: "err", text: "Nova senha precisa ter ao menos 6 caracteres." }); return; }
-    if (newPwd !== confirmPwd) { setPwdMsg({ type: "err", text: "As senhas não coincidem." }); return; }
-    setSaving(true);
-    // Re-autenticar para validar senha atual
-    const { data: sess } = await supabase.auth.getUser();
-    const email = sess.user?.email;
-    if (!email) { setSaving(false); setPwdMsg({ type: "err", text: "Sessão inválida." }); return; }
-    const { error: signErr } = await supabase.auth.signInWithPassword({ email, password: currentPwd });
-    if (signErr) { setSaving(false); setPwdMsg({ type: "err", text: "Senha atual incorreta." }); return; }
-    const { error } = await supabase.auth.updateUser({ password: newPwd });
-    setSaving(false);
-    if (error) { setPwdMsg({ type: "err", text: error.message }); return; }
-    setCurrentPwd(""); setNewPwd(""); setConfirmPwd("");
-    setPwdMsg({ type: "ok", text: "Senha alterada com sucesso." });
-  };
-
+function ProfileView({ profile, initials }: { profile: Profile | null; initials: string; onProfileChange: () => void }) {
   return (
     <>
       <SectionTitle>Dados pessoais</SectionTitle>
-      <div className="grid lg:grid-cols-2 gap-4">
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="max-w-2xl">
+        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
           <div className="flex items-center gap-4 mb-5 pb-5 border-b border-gray-100">
-            <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-semibold" style={{ backgroundColor: PRIMARY }}>{initials}</div>
+            <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-semibold shrink-0" style={{ backgroundColor: PRIMARY }}>{initials}</div>
             <div>
               <p className="text-base font-semibold text-gray-900">{profile?.name ?? "—"}</p>
               <p className="text-xs text-gray-500">{profile?.email ?? "—"}</p>
             </div>
           </div>
-          <dl className="space-y-3 text-sm">
+          <dl className="space-y-4 text-sm mb-6">
             <Row label="Nome completo" value={profile?.name} />
             <Row label="CPF" value={profile?.cpf} />
             <Row label="Data de nascimento" value={profile?.birth_date ? formatDate(profile.birth_date) : null} />
@@ -831,30 +806,11 @@ function ProfileView({ profile, initials, onProfileChange: _onProfileChange }: {
             <Row label="E-mail" value={profile?.email} />
             <Row label="Endereço" value={profile?.address} />
           </dl>
-          <a href={WHATSAPP_LINK} target="_blank" rel="noreferrer" className="mt-5 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-sm font-semibold text-white hover:brightness-110" style={{ backgroundColor: WHATSAPP }}>
+          <a href={WHATSAPP_LINK} target="_blank" rel="noreferrer" className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-sm font-semibold text-white hover:brightness-110 transition" style={{ backgroundColor: WHATSAPP }}>
             <MessageCircle className="w-4 h-4" /> Solicitar atualização via WhatsApp
           </a>
-        </div>
-
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-sm font-semibold text-gray-900 mb-4">Alterar senha</h3>
-          <form onSubmit={changePassword} className="space-y-3">
-            <Field label="Senha atual" type="password" value={currentPwd} onChange={setCurrentPwd} />
-            <Field label="Nova senha" type="password" value={newPwd} onChange={setNewPwd} />
-            <Field label="Confirmar nova senha" type="password" value={confirmPwd} onChange={setConfirmPwd} />
-            {pwdMsg && (
-              <div className="flex items-center gap-2 text-xs px-3 py-2 rounded-md" style={pwdMsg.type === "ok" ? { backgroundColor: "#D1FAE5", color: "#047857" } : { backgroundColor: "#FEE2E2", color: "#B91C1C" }}>
-                {pwdMsg.type === "ok" ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
-                {pwdMsg.text}
-              </div>
-            )}
-            <button type="submit" disabled={saving} className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-sm font-semibold text-white hover:brightness-110 disabled:opacity-60" style={{ backgroundColor: PRIMARY }}>
-              {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-              Alterar senha
-            </button>
-          </form>
-          <p className="text-xs text-gray-500 mt-4">
-            Para atualizar CPF, endereço ou dados cadastrais, solicite ao corretor pelo WhatsApp.
+          <p className="text-xs text-gray-400 text-center mt-4">
+            Para atualizar sua senha ou dados cadastrais, entre em contato direto com o seu corretor.
           </p>
         </div>
       </div>
