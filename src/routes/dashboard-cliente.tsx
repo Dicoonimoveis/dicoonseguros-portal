@@ -154,7 +154,27 @@ function ClientDashboard() {
 
   useEffect(() => {
     void loadCore();
-  }, [loadCore]);
+
+    if (!userId) return;
+
+    const channel = supabase
+      .channel(`client-realtime-${userId}`)
+      .on("postgres_changes", { event: "*", schema: "public" }, () => {
+        void (async () => {
+          const [profRes, polRes] = await Promise.all([
+            supabase.from("profiles").select("*").eq("user_id", userId).maybeSingle(),
+            supabase.from("policies").select("*").eq("user_id", userId).order("end_date"),
+          ]);
+          if (profRes.data) setProfile(profRes.data as Profile);
+          if (polRes.data) setPolicies(polRes.data as Policy[]);
+        })();
+      })
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [userId, loadCore]);
 
   const handleLogout = async () => {
     await signOut();

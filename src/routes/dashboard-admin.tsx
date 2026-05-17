@@ -4,7 +4,7 @@ import {
   Shield, LayoutDashboard, Users, FileText, CalendarClock, AlertTriangle,
   BarChart3, Settings, LogOut, Bell, Plus, Search, Upload, ScanLine,
   Download, Trash2, MessageCircle, Eye, Pencil, X, FileSpreadsheet,
-  Sparkles, TrendingUp, DollarSign, Activity, CheckCircle2, Menu, Mail,
+  Sparkles, TrendingUp, DollarSign, Activity, CheckCircle2, Menu, Mail, Folder,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { signOut } from "@/lib/auth";
@@ -38,7 +38,7 @@ type NavKey =
   | "dashboard" | "clientes" | "apolices" | "vencimentos" | "sinistros"
   | "documentos" | "importar" | "relatorios" | "configuracoes" | "cadastro_cliente";
 
-type Profile = { user_id: string; name: string; email: string; cpf: string | null; phone: string | null; created_at: string };
+type Profile = { user_id: string; name: string; email: string; cpf: string | null; phone: string | null; created_at: string; birth_date?: string | null; address?: string | null };
 type Policy = {
   id: string; user_id: string; policy_type: string; item_label: string | null;
   policy_number: string; insurer: string; start_date: string; end_date: string;
@@ -91,7 +91,37 @@ function AdminDashboard() {
     }
   }, []);
 
-  useEffect(() => { reload(); }, [reload]);
+  useEffect(() => {
+    reload();
+
+    const channel = supabase
+      .channel("admin-realtime")
+      .on("postgres_changes", { event: "*", schema: "public" }, () => {
+        void (async () => {
+          try {
+            const [pRes, polRes, cRes, cdRes, pdRes] = await Promise.all([
+              supabase.from("profiles").select("*").order("created_at", { ascending: false }),
+              supabase.from("policies").select("*").order("end_date", { ascending: true }),
+              supabase.from("claims").select("*").order("created_at", { ascending: false }),
+              supabase.from("client_documents").select("*").order("created_at", { ascending: false }),
+              supabase.from("policy_documents").select("*"),
+            ]);
+            setProfiles((pRes.data ?? []) as Profile[]);
+            setPolicies((polRes.data ?? []) as Policy[]);
+            setClaims((cRes.data ?? []) as Claim[]);
+            setClientDocs((cdRes.data ?? []) as ClientDoc[]);
+            setPolicyDocs((pdRes.data ?? []) as PolicyDoc[]);
+          } catch (err) {
+            console.error("Erro na sincronização em tempo real:", err);
+          }
+        })();
+      })
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [reload]);
 
   const handleLogout = async () => { await signOut(); navigate({ to: "/login" }); };
 
@@ -265,7 +295,7 @@ function AdminDashboard() {
           ) : (
             <>
               {active === "dashboard" && <DashboardView profiles={profiles} policies={policiesWithDays} urgent={urgent} soon={soon} setActiveTab={setActive} />}
-              {active === "clientes" && <ClientesView profiles={profiles} policies={policies} onReload={reload} />}
+              {active === "clientes" && <ClientesView profiles={profiles} policies={policies} clientDocs={clientDocs} claims={claims} onReload={reload} />}
               {active === "apolices" && <ApolicesView profiles={profiles} policies={policiesWithDays} policyDocs={policyDocs} onReload={reload} onSwitch={setActive} />}
               {active === "vencimentos" && <VencimentosView urgent={urgent} soon={soon} />}
               {active === "sinistros" && <SinistrosView profiles={profiles} policies={policies} claims={claims} onReload={reload} />}
@@ -464,7 +494,15 @@ function ExpiryTable({
 /* ============================================================ */
 /* SECTION 2 — CLIENTES                                         */
 /* ============================================================ */
-function ClientesView({ profiles, policies, onReload }: { profiles: Profile[]; policies: Policy[]; onReload: () => void }) {
+function ClientesView({
+  profiles, policies, clientDocs, claims, onReload,
+}: {
+  profiles: Profile[];
+  policies: Policy[];
+  clientDocs: ClientDoc[];
+  claims: Claim[];
+  onReload: () => void;
+}) {
   const [search, setSearch] = useState("");
   const [showNew, setShowNew] = useState(false);
   const [viewing, setViewing] = useState<Profile | null>(null);
@@ -523,7 +561,15 @@ function ClientesView({ profiles, policies, onReload }: { profiles: Profile[]; p
       </div>
 
       {showNew && <NovoClienteModal onClose={() => setShowNew(false)} onSaved={() => { setShowNew(false); onReload(); }} />}
-      {viewing && <ClientePerfilDrawer profile={viewing} policies={policies.filter((p) => p.user_id === viewing.user_id)} onClose={() => setViewing(null)} />}
+      {viewing && (
+        <ClientePerfilDrawer
+          profile={viewing}
+          policies={policies.filter((p) => p.user_id === viewing.user_id)}
+          clientDocs={clientDocs.filter((d) => d.user_id === viewing.user_id)}
+          claims={claims.filter((c) => c.user_id === viewing.user_id)}
+          onClose={() => setViewing(null)}
+        />
+      )}
     </>
   );
 }
@@ -585,30 +631,142 @@ function NovoClienteModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
   );
 }
 
-function ClientePerfilDrawer({ profile, policies, onClose }: { profile: Profile; policies: Policy[]; onClose: () => void }) {
+function ClientePerfilDrawer({
+  profile, policies, clientDocs, claims, onClose,
+}: {
+  profile: Profile;
+  policies: Policy[];
+  clientDocs: ClientDoc[];
+  claims: Claim[];
+  onClose: () => void;
+}) {
+  const downloadClientDoc = async (d: ClientDoc) => {
+    const { data, error } = await supabase.storage.from("client-documents").createSignedUrl(d.file_path, 60);
+    if (error || !data) { alert("Não foi possível gerar o link de download."); return; }
+    window.open(data.signedUrl, "_blank");
+  };
+
+  const formatSize = (bytes: number) => {
+    if (!bytes) return "—";
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  };
+
+  const statusBadge = (s: string) => {
+    const map: Record<string, { t: string; bg: string; c: string }> = {
+      em_analise: { t: "Em análise", bg: "#DBEAFE", c: "#1D4ED8" },
+      aguardando_documentos: { t: "Aguardando documentos", bg: "#FEF3C7", c: "#B45309" },
+      concluido: { t: "Concluído", bg: "#D1FAE5", c: "#047857" },
+      negado: { t: "Negado", bg: "#FEE2E2", c: "#B91C1C" },
+    };
+    return map[s] ?? { t: s, bg: "#F3F4F6", c: "#374151" };
+  };
+
   return (
-    <Modal title={`Perfil — ${profile.name}`} onClose={onClose}>
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-3 text-sm">
-          <KV k="E-mail" v={profile.email} />
-          <KV k="CPF/CNPJ" v={profile.cpf ?? "—"} />
-          <KV k="Telefone" v={profile.phone ?? "—"} />
-          <KV k="Cadastro" v={new Date(profile.created_at).toLocaleDateString("pt-BR")} />
+    <Modal title={`Perfil do Cliente — ${profile.name}`} onClose={onClose}>
+      <div className="space-y-5">
+        {/* Grid de Dados Pessoais */}
+        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">Dados Cadastrais</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+            <KV k="E-mail" v={profile.email} />
+            <KV k="CPF/CNPJ" v={profile.cpf ?? "—"} />
+            <KV k="Telefone" v={profile.phone ?? "—"} />
+            <KV k="Data de Nascimento" v={profile.birth_date ? new Date(profile.birth_date + "T00:00:00").toLocaleDateString("pt-BR") : "—"} />
+            <KV k="Cadastro" v={new Date(profile.created_at).toLocaleDateString("pt-BR")} />
+            <KV k="Endereço" v={profile.address ?? "—"} />
+          </div>
         </div>
-        <div>
-          <h4 className="text-sm font-semibold text-gray-800 mb-2">Apólices ({policies.length})</h4>
-          {policies.length === 0 ? (
-            <p className="text-sm text-gray-400">Sem apólices.</p>
-          ) : (
-            <ul className="divide-y divide-gray-100 border border-gray-200 rounded-lg">
-              {policies.map((p) => (
-                <li key={p.id} className="px-3 py-2 text-sm">
-                  <div className="font-medium text-gray-900">{p.policy_type} — {p.policy_number}</div>
-                  <div className="text-xs text-gray-500">{p.insurer} · vence {new Date(p.end_date).toLocaleDateString("pt-BR")}</div>
-                </li>
-              ))}
-            </ul>
-          )}
+
+        {/* Grid de Seções */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Coluna 1: Apólices */}
+          <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex flex-col h-[280px]">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2.5 flex items-center justify-between">
+              <span>Apólices ({policies.length})</span>
+              <FileText className="w-4 h-4 text-gray-400" />
+            </h4>
+            <div className="flex-1 overflow-y-auto min-h-0 space-y-2 pr-1">
+              {policies.length === 0 ? (
+                <p className="text-xs text-gray-400 py-8 text-center">Nenhuma apólice registrada.</p>
+              ) : (
+                policies.map((p) => (
+                  <div key={p.id} className="p-2.5 rounded-lg border border-gray-100 bg-gray-50 text-xs">
+                    <div className="font-semibold text-gray-900">{p.policy_type}</div>
+                    <div className="text-gray-500 mt-0.5">Nº {p.policy_number} · {p.insurer}</div>
+                    <div className="text-gray-400 mt-0.5">Vence em {new Date(p.end_date).toLocaleDateString("pt-BR")}</div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Coluna 2: Documentos Pessoais */}
+          <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex flex-col h-[280px]">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2.5 flex items-center justify-between">
+              <span>Documentos Enviados ({clientDocs.length})</span>
+              <Folder className="w-4 h-4 text-gray-400" />
+            </h4>
+            <div className="flex-1 overflow-y-auto min-h-0 space-y-2 pr-1">
+              {clientDocs.length === 0 ? (
+                <p className="text-xs text-gray-400 py-8 text-center">Nenhum documento pessoal enviado pelo cliente.</p>
+              ) : (
+                clientDocs.map((d) => (
+                  <div key={d.id} className="p-2.5 rounded-lg border border-gray-100 bg-gray-50 flex items-center justify-between gap-2 text-xs">
+                    <div className="min-w-0">
+                      <div className="font-semibold text-gray-900 truncate" title={d.file_name}>{d.file_name}</div>
+                      <div className="text-gray-500 mt-0.5">{d.doc_type} · {formatSize(d.size_bytes)}</div>
+                      <div className="text-gray-400 mt-0.5">Enviado em {new Date(d.created_at).toLocaleDateString("pt-BR")}</div>
+                    </div>
+                    <button
+                      onClick={() => downloadClientDoc(d)}
+                      className="p-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition shrink-0"
+                      title="Download"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Sinistros do Cliente */}
+        <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2.5 flex items-center justify-between">
+            <span>Sinistros Registrados ({claims.length})</span>
+            <AlertTriangle className="w-4 h-4 text-gray-400" />
+          </h4>
+          <div className="max-h-[200px] overflow-y-auto space-y-2 pr-1">
+            {claims.length === 0 ? (
+              <p className="text-xs text-gray-400 py-4 text-center">Nenhum sinistro registrado por este cliente.</p>
+            ) : (
+              claims.map((c) => {
+                const b = statusBadge(c.status);
+                return (
+                  <div key={c.id} className="p-3 rounded-lg border border-gray-100 bg-gray-50 flex items-center justify-between gap-3 text-xs flex-wrap">
+                    <div>
+                      <div className="font-semibold text-gray-900">Protocolo {c.protocol}</div>
+                      <div className="text-gray-500 mt-0.5">{c.insurance_type} · {c.event_type}</div>
+                      <div className="text-gray-400 mt-0.5">Data do evento: {new Date(c.event_date + "T00:00:00").toLocaleDateString("pt-BR")}</div>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold" style={{ backgroundColor: b.bg, color: b.c }}>
+                      {b.t}
+                    </span>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        <div className="flex justify-end pt-2 border-t border-gray-100">
+          <button onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 transition">
+            Fechar Perfil
+          </button>
         </div>
       </div>
     </Modal>
@@ -616,7 +774,7 @@ function ClientePerfilDrawer({ profile, policies, onClose }: { profile: Profile;
 }
 
 function KV({ k, v }: { k: string; v: string }) {
-  return <div><p className="text-[10px] uppercase text-gray-500">{k}</p><p className="text-sm text-gray-900">{v}</p></div>;
+  return <div><p className="text-[10px] uppercase text-gray-500">{k}</p><p className="text-sm font-semibold text-gray-900">{v}</p></div>;
 }
 
 /* ============================================================ */
