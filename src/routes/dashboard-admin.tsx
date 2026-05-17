@@ -302,8 +302,7 @@ function AdminDashboard() {
               {active === "documentos" && <DocumentosView profiles={profiles} clientDocs={clientDocs} policyDocs={policyDocs} policies={policies} onReload={reload} />}
               {active === "importar" && <ImportarPlanilhaView onReload={reload} />}
               {active === "relatorios" && <RelatoriosView profiles={profiles} policies={policies} claims={claims} />}
-              {active === "configuracoes" && <ConfiguracoesView profiles={profiles} />}
-              {active === "cadastro_cliente" && <CadastroClienteView profiles={profiles} onReload={reload} />}
+              {active === "configuracoes" && <ConfiguracoesView profiles={profiles} onReload={reload} />}
             </>
           )}
         </div>
@@ -360,22 +359,7 @@ function DashboardView({
         <MetricCard label="Vencem em 7 dias" value={urgent.length.toString()} color="#DC2626" />
       </div>
 
-      <div className="flex flex-wrap gap-3 mb-6 bg-white border border-gray-200 p-4 rounded-xl shadow-sm">
-        <div className="flex-1 min-w-[200px] flex items-center gap-2">
-          <Sparkles className="w-5 h-5" style={{ color: PRIMARY }} />
-          <div>
-            <p className="text-xs font-semibold text-gray-800">Ações Rápidas</p>
-            <p className="text-[11px] text-gray-500">Gerencie logins, IPs e acessos de clientes</p>
-          </div>
-        </div>
-        <button
-          onClick={() => setActiveTab("cadastro_cliente")}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold text-white shadow-sm hover:brightness-110 transition shrink-0"
-          style={{ backgroundColor: PRIMARY }}
-        >
-          <Users className="w-4 h-4" /> Cadastro Cliente
-        </button>
-      </div>
+
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         <AlertBanner tone="red" title={`${urgent.length} apólice(s) vencendo em 7 dias`} action={
@@ -1519,7 +1503,10 @@ function RelatoriosView({ profiles, policies, claims }: { profiles: Profile[]; p
 /* ============================================================ */
 /* SECTION 9 — CONFIGURAÇÕES                                    */
 /* ============================================================ */
-function ConfiguracoesView({ profiles }: { profiles: Profile[] }) {
+/* ============================================================ */
+/* SECTION 9 — CONFIGURAÇÕES                                    */
+/* ============================================================ */
+function ConfiguracoesView({ profiles, onReload }: { profiles: Profile[]; onReload: () => void }) {
   const [broker, setBroker] = useState({
     company_name: "Dicoon Seguros", contact_email: "", whatsapp: "(51) 98236-7904",
     whatsapp_link: WA_LINK, business_hours: "Seg–Sex 9h–18h",
@@ -1527,6 +1514,66 @@ function ConfiguracoesView({ profiles }: { profiles: Profile[] }) {
   const [savingBroker, setSavingBroker] = useState(false);
   const [pwd, setPwd] = useState({ current: "", next: "", confirm: "" });
   const [pwdMsg, setPwdMsg] = useState<string | null>(null);
+
+  // States do Controle de Acesso de Clientes
+  const [search, setSearch] = useState("");
+  const [selectedClient, setSelectedClient] = useState<Profile | null>(null);
+  const [showNew, setShowNew] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const logs = useMemo(() => getClientLogs(profiles), [profiles]);
+
+  const filtered = useMemo(() => {
+    return profiles.filter((p) => {
+      const q = search.toLowerCase().trim();
+      if (!q) return true;
+      return (
+        p.name.toLowerCase().includes(q) ||
+        p.email.toLowerCase().includes(q) ||
+        (p.cpf && p.cpf.includes(q))
+      );
+    });
+  }, [profiles, search]);
+
+  const deleteClient = async (profile: Profile) => {
+    if (!confirm(`Tem certeza de que deseja excluir permanentemente o cadastro de "${profile.name}"?\nEsta ação apagará a conta do portal, apólices associadas e documentos.`)) return;
+    
+    setDeletingId(profile.user_id);
+    try {
+      // 1. Apagar apólices e documentos de apólices
+      const { data: pols } = await supabase.from("policies").select("id").eq("user_id", profile.user_id);
+      if (pols && pols.length > 0) {
+        const polIds = pols.map((po) => po.id);
+        await supabase.from("policy_documents").delete().in("policy_id", polIds);
+        await supabase.from("policies").delete().eq("user_id", profile.user_id);
+      }
+      
+      // 2. Apagar sinistros, documentos do cliente e roles
+      await supabase.from("claims").delete().eq("user_id", profile.user_id);
+      await supabase.from("client_documents").delete().eq("user_id", profile.user_id);
+      await supabase.from("user_roles").delete().eq("user_id", profile.user_id);
+      
+      // 3. Apagar perfil do cliente
+      const { error } = await supabase.from("profiles").delete().eq("user_id", profile.user_id);
+      if (error) throw error;
+      
+      alert("Cadastro do cliente e todos os dados associados foram excluídos com sucesso!");
+      onReload();
+    } catch (err: any) {
+      alert("Erro ao excluir cliente: " + err.message);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const formatAccessDate = (dateStr: string) => {
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString("pt-BR") + " " + date.toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return "—";
+    }
+  };
 
   useEffect(() => {
     supabase.from("broker_settings").select("*").maybeSingle().then(({ data }) => {
@@ -1560,7 +1607,9 @@ function ConfiguracoesView({ profiles }: { profiles: Profile[] }) {
   return (
     <>
       <h1 className="text-xl font-semibold text-gray-900 mb-4">Configurações</h1>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      
+      {/* 2-Column Top Cards */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
           <h3 className="text-sm font-semibold text-gray-800 mb-3">Dados da corretora</h3>
           <div className="space-y-3">
@@ -1575,34 +1624,146 @@ function ConfiguracoesView({ profiles }: { profiles: Profile[] }) {
           </div>
         </div>
 
-        <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-gray-800">Usuários</h3>
-              <button className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md border border-gray-300 text-xs text-gray-700"><Plus className="w-3 h-3" />Adicionar</button>
-            </div>
-            <ul className="divide-y divide-gray-100 text-sm">
-              {profiles.slice(0, 6).map((p) => (
-                <li key={p.user_id} className="py-2 flex justify-between">
-                  <span>{p.name}</span>
-                  <span className="text-xs text-gray-500">{p.email}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+        <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm flex flex-col justify-between">
+          <div>
             <h3 className="text-sm font-semibold text-gray-800 mb-3">Alterar minha senha</h3>
             <div className="space-y-3">
               <Input label="Senha atual" type="password" value={pwd.current} onChange={(v) => setPwd({ ...pwd, current: v })} />
               <Input label="Nova senha" type="password" value={pwd.next} onChange={(v) => setPwd({ ...pwd, next: v })} />
               <Input label="Confirmar nova senha" type="password" value={pwd.confirm} onChange={(v) => setPwd({ ...pwd, confirm: v })} />
-              <button onClick={changePwd} className="px-4 py-2 rounded-md text-sm font-semibold text-white" style={{ backgroundColor: PRIMARY }}>Alterar senha</button>
-              {pwdMsg && <p className="text-sm text-gray-700">{pwdMsg}</p>}
             </div>
+          </div>
+          <div className="mt-4">
+            <button onClick={changePwd} className="px-4 py-2 rounded-md text-sm font-semibold text-white transition hover:brightness-110" style={{ backgroundColor: PRIMARY }}>
+              Alterar senha
+            </button>
+            {pwdMsg && <p className="text-xs text-gray-600 mt-2 font-medium">{pwdMsg}</p>}
           </div>
         </div>
       </div>
+
+      {/* Controle de Acessos e Clientes (Integração Total) */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+          <div>
+            <h3 className="text-sm font-bold text-gray-900">Cadastro de Clientes & Controle de Acessos</h3>
+            <p className="text-xs text-gray-500">Logs de login, IPs, data/hora de acesso local e credenciais manuais</p>
+          </div>
+          <button
+            onClick={() => setShowNew(true)}
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-xs font-semibold text-white shadow-sm hover:brightness-110 transition"
+            style={{ backgroundColor: PRIMARY }}
+          >
+            <Plus className="w-4 h-4" /> Novo Cliente
+          </button>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+          <div className="bg-gray-50 border border-gray-100 rounded-xl p-4">
+            <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Total de Cadastros (Exato)</p>
+            <p className="text-xl font-bold text-gray-900 mt-1">{profiles.length}</p>
+            <p className="text-[10px] text-gray-400 mt-0.5">Incluindo cadastros incompletos</p>
+          </div>
+          <div className="bg-gray-50 border border-gray-100 rounded-xl p-4">
+            <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Últimos Acessos</p>
+            <p className="text-xl font-bold mt-1" style={{ color: PRIMARY }}>
+              {logs.filter(l => new Date(l.time).toDateString() === new Date().toDateString()).length}
+            </p>
+            <p className="text-[10px] text-gray-400 mt-0.5">Clientes ativos hoje</p>
+          </div>
+          <div className="bg-gray-50 border border-gray-100 rounded-xl p-4">
+            <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Pendentes de Dados</p>
+            <p className="text-xl font-bold text-amber-600 mt-1">
+              {profiles.filter(p => !p.phone && !p.cpf).length}
+            </p>
+            <p className="text-[10px] text-gray-400 mt-0.5">Sem CPF ou telefone</p>
+          </div>
+        </div>
+
+        {/* Search */}
+        <div className="relative mb-4 max-w-md">
+          <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Pesquise por nome, e-mail ou CPF..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-emerald-500 transition bg-white text-gray-800"
+          />
+        </div>
+
+        {/* Table */}
+        <div className="overflow-x-auto border border-gray-100 rounded-lg">
+          <table className="w-full text-sm min-w-[750px]">
+            <thead className="bg-gray-50 text-xs uppercase text-gray-500 border-b border-gray-200">
+              <tr>
+                <th className="text-left px-4 py-3 font-medium">Cliente</th>
+                <th className="text-left px-4 py-3 font-medium">Documento / Fone</th>
+                <th className="text-left px-4 py-3 font-medium">Último Acesso</th>
+                <th className="text-left px-4 py-3 font-medium">Endereço IP</th>
+                <th className="px-4 py-3"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 bg-white">
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-8 text-center text-gray-500 text-xs">
+                    Nenhum cliente cadastrado encontrado.
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((p) => {
+                  const log = logs.find((l) => l.email.toLowerCase() === p.email.toLowerCase());
+                  return (
+                    <tr key={p.user_id} className="hover:bg-gray-50 transition">
+                      <td className="px-4 py-3">
+                        <p className="font-semibold text-gray-900">{p.name || "—"}</p>
+                        <p className="text-xs text-gray-500">{p.email}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="text-xs font-medium text-gray-800">CPF: {p.cpf || "Pendente"}</p>
+                        <p className="text-xs text-gray-500">{p.phone || "Sem telefone"}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-xs text-gray-600 font-medium">
+                          {log ? formatAccessDate(log.time) : "Sem registros"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <code className="text-xs bg-gray-100 text-gray-800 px-1.5 py-0.5 rounded font-mono">
+                          {log?.ip || "127.0.0.1"}
+                        </code>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => setSelectedClient(p)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-300 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 transition shadow-sm"
+                          >
+                            <Settings className="w-3.5 h-3.5 text-gray-500" /> Alterar Acesso
+                          </button>
+                          <button
+                            onClick={() => deleteClient(p)}
+                            disabled={deletingId === p.user_id}
+                            className="inline-flex items-center justify-center p-2 rounded-lg text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 transition shadow-sm"
+                            title="Excluir permanentemente"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {showNew && <NovoClienteModal onClose={() => setShowNew(false)} onSaved={() => { setShowNew(false); onReload(); }} />}
+      {selectedClient && <GerenciarAcessoModal client={selectedClient} onClose={() => setSelectedClient(null)} />}
     </>
   );
 }
@@ -1660,192 +1821,7 @@ function getClientLogs(profiles: Profile[]): AccessLog[] {
   });
 }
 
-function CadastroClienteView({ profiles, onReload }: { profiles: Profile[]; onReload: () => void }) {
-  const [search, setSearch] = useState("");
-  const [selectedClient, setSelectedClient] = useState<Profile | null>(null);
-  const [showNew, setShowNew] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const logs = useMemo(() => getClientLogs(profiles), [profiles]);
-
-  const filtered = useMemo(() => {
-    return profiles.filter((p) => {
-      const q = search.toLowerCase().trim();
-      if (!q) return true;
-      return (
-        p.name.toLowerCase().includes(q) ||
-        p.email.toLowerCase().includes(q) ||
-        (p.cpf && p.cpf.includes(q))
-      );
-    });
-  }, [profiles, search]);
-
-  const deleteClient = async (profile: Profile) => {
-    if (!confirm(`Tem certeza de que deseja excluir permanentemente o cadastro de "${profile.name}"?\nEsta ação apagará a conta do portal, apólices associadas e documentos.`)) return;
-    
-    setDeletingId(profile.user_id);
-    try {
-      // 1. Apagar apólices e documentos de apólices
-      const { data: pols } = await supabase.from("policies").select("id").eq("user_id", profile.user_id);
-      if (pols && pols.length > 0) {
-        const polIds = pols.map((po) => po.id);
-        await supabase.from("policy_documents").delete().in("policy_id", polIds);
-        await supabase.from("policies").delete().eq("user_id", profile.user_id);
-      }
-      
-      // 2. Apagar sinistros, documentos do cliente e roles
-      await supabase.from("claims").delete().eq("user_id", profile.user_id);
-      await supabase.from("client_documents").delete().eq("user_id", profile.user_id);
-      await supabase.from("user_roles").delete().eq("user_id", profile.user_id);
-      
-      // 3. Apagar perfil do cliente
-      const { error } = await supabase.from("profiles").delete().eq("user_id", profile.user_id);
-      if (error) throw error;
-      
-      alert("Cadastro do cliente e todos os dados associados foram excluídos com sucesso!");
-      onReload();
-    } catch (err: any) {
-      alert("Erro ao excluir cliente: " + err.message);
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
-  const formatDate = (dateStr: string) => {
-    try {
-      const date = new Date(dateStr);
-      return date.toLocaleDateString("pt-BR") + " " + date.toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' });
-    } catch {
-      return "—";
-    }
-  };
-
-  return (
-    <>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Cadastro de Clientes</h1>
-          <p className="text-xs text-gray-500">Controle de acessos, logs de login, IPs e gestão manual de credenciais</p>
-        </div>
-        <button
-          onClick={() => setShowNew(true)}
-          className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-semibold text-white shadow-sm hover:brightness-110 transition"
-          style={{ backgroundColor: PRIMARY }}
-        >
-          <Plus className="w-4 h-4" /> Novo Cliente
-        </button>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-          <p className="text-xs font-semibold text-gray-500">Total de Cadastros (Exato)</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{profiles.length}</p>
-          <p className="text-[10px] text-gray-400 mt-0.5">Incluindo cadastros incompletos/fictícios</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-          <p className="text-xs font-semibold text-gray-500">Últimos Acessos</p>
-          <p className="text-2xl font-bold mt-1" style={{ color: PRIMARY }}>
-            {logs.filter(l => new Date(l.time).toDateString() === new Date().toDateString()).length}
-          </p>
-          <p className="text-[10px] text-gray-400 mt-0.5">Clientes que acessaram o app hoje</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-          <p className="text-xs font-semibold text-gray-500">Ações Manuais Pendentes</p>
-          <p className="text-2xl font-bold text-amber-600 mt-1">
-            {profiles.filter(p => !p.phone && !p.cpf).length}
-          </p>
-          <p className="text-[10px] text-gray-400 mt-0.5">Cadastros incompletos ou pendentes</p>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm mb-6">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Pesquise por nome, e-mail ou CPF..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-emerald-500 transition"
-            />
-          </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[750px]">
-            <thead className="bg-gray-50 text-xs uppercase text-gray-500 border-b border-gray-200">
-              <tr>
-                <th className="text-left px-4 py-3 font-medium">Cliente</th>
-                <th className="text-left px-4 py-3 font-medium">Documento / Fone</th>
-                <th className="text-left px-4 py-3 font-medium">Último Acesso</th>
-                <th className="text-left px-4 py-3 font-medium">Endereço IP</th>
-                <th className="px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-gray-500 text-xs">
-                    Nenhum cliente cadastrado encontrado.
-                  </td>
-                </tr>
-              ) : (
-                filtered.map((p) => {
-                  const log = logs.find((l) => l.email.toLowerCase() === p.email.toLowerCase());
-                  return (
-                    <tr key={p.user_id} className="hover:bg-gray-50 transition">
-                      <td className="px-4 py-3">
-                        <p className="font-semibold text-gray-900">{p.name || "—"}</p>
-                        <p className="text-xs text-gray-500">{p.email}</p>
-                      </td>
-                      <td className="px-4 py-3">
-                        <p className="text-xs font-medium text-gray-800">CPF: {p.cpf || "Pendente"}</p>
-                        <p className="text-xs text-gray-500">{p.phone || "Sem telefone"}</p>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-xs text-gray-600 font-medium">
-                          {log ? formatDate(log.time) : "Sem registros"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <code className="text-xs bg-gray-100 text-gray-800 px-1.5 py-0.5 rounded font-mono">
-                          {log?.ip || "127.0.0.1"}
-                        </code>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => setSelectedClient(p)}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-300 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 transition"
-                          >
-                            <Settings className="w-3.5 h-3.5 text-gray-500" /> Alterar Acesso
-                          </button>
-                          <button
-                            onClick={() => deleteClient(p)}
-                            disabled={deletingId === p.user_id}
-                            className="inline-flex items-center justify-center p-2 rounded-lg text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 transition"
-                            title="Excluir permanentemente"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {showNew && <NovoClienteModal onClose={() => setShowNew(false)} onSaved={() => { setShowNew(false); onReload(); }} />}
-      {selectedClient && <GerenciarAcessoModal client={selectedClient} onClose={() => setSelectedClient(null)} />}
-    </>
-  );
-}
 
 function GerenciarAcessoModal({ client, onClose }: { client: Profile; onClose: () => void }) {
   const [sendingEmail, setSendingEmail] = useState(false);
