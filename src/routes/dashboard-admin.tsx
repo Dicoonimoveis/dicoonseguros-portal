@@ -4,7 +4,7 @@ import {
   Shield, LayoutDashboard, Users, FileText, CalendarClock, AlertTriangle,
   BarChart3, Settings, LogOut, Bell, Plus, Search, Upload, ScanLine,
   Download, Trash2, MessageCircle, Eye, Pencil, X, FileSpreadsheet,
-  Sparkles, TrendingUp, DollarSign, Activity, CheckCircle2,
+  Sparkles, TrendingUp, DollarSign, Activity, CheckCircle2, Menu,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { signOut } from "@/lib/auth";
@@ -67,22 +67,28 @@ function AdminDashboard() {
   const [clientDocs, setClientDocs] = useState<ClientDoc[]>([]);
   const [policyDocs, setPolicyDocs] = useState<PolicyDoc[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const reload = useCallback(async () => {
     setLoading(true);
-    const [pRes, polRes, cRes, cdRes, pdRes] = await Promise.all([
-      supabase.from("profiles").select("*").order("created_at", { ascending: false }),
-      supabase.from("policies").select("*").order("end_date", { ascending: true }),
-      supabase.from("claims").select("*").order("created_at", { ascending: false }),
-      supabase.from("client_documents").select("*").order("created_at", { ascending: false }),
-      supabase.from("policy_documents").select("*"),
-    ]);
-    setProfiles((pRes.data ?? []) as Profile[]);
-    setPolicies((polRes.data ?? []) as Policy[]);
-    setClaims((cRes.data ?? []) as Claim[]);
-    setClientDocs((cdRes.data ?? []) as ClientDoc[]);
-    setPolicyDocs((pdRes.data ?? []) as PolicyDoc[]);
-    setLoading(false);
+    try {
+      const [pRes, polRes, cRes, cdRes, pdRes] = await Promise.all([
+        supabase.from("profiles").select("*").order("created_at", { ascending: false }),
+        supabase.from("policies").select("*").order("end_date", { ascending: true }),
+        supabase.from("claims").select("*").order("created_at", { ascending: false }),
+        supabase.from("client_documents").select("*").order("created_at", { ascending: false }),
+        supabase.from("policy_documents").select("*"),
+      ]);
+      setProfiles((pRes.data ?? []) as Profile[]);
+      setPolicies((polRes.data ?? []) as Policy[]);
+      setClaims((cRes.data ?? []) as Claim[]);
+      setClientDocs((cdRes.data ?? []) as ClientDoc[]);
+      setPolicyDocs((pdRes.data ?? []) as PolicyDoc[]);
+    } catch (err) {
+      console.error("Erro ao recarregar dados do dashboard admin:", err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { reload(); }, [reload]);
@@ -104,17 +110,24 @@ function AdminDashboard() {
   return (
     <div className="min-h-screen font-sans" style={{ backgroundColor: BG }}>
       {/* Top bar */}
-      <header className="fixed top-0 inset-x-0 h-16 bg-white border-b border-gray-200 z-30 flex items-center justify-between px-6">
+      <header className="fixed top-0 inset-x-0 h-16 bg-white border-b border-gray-200 z-30 flex items-center justify-between px-4 sm:px-6">
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="md:hidden p-1.5 -ml-1.5 rounded-lg text-gray-600 hover:bg-gray-100 focus:outline-none"
+            aria-label="Toggle menu"
+          >
+            {isSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
           <Shield className="w-6 h-6" style={{ color: PRIMARY }} strokeWidth={2.4} />
-          <span className="text-lg font-bold" style={{ color: PRIMARY }}>Dicoon Seguros</span>
+          <span className="text-base sm:text-lg font-bold" style={{ color: PRIMARY }}>Dicoon Seguros</span>
         </div>
-        <div className="flex items-center gap-4">
-          <span className="px-3 py-1 rounded-full text-xs font-semibold"
+        <div className="flex items-center gap-2 sm:gap-4">
+          <span className="px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-semibold"
             style={{ backgroundColor: `${ADMIN_PURPLE}15`, color: ADMIN_PURPLE }}>Administrador</span>
-          <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-semibold"
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-white text-xs sm:text-sm font-semibold"
             style={{ backgroundColor: ADMIN_PURPLE }}>AD</div>
-          <button onClick={handleLogout} className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900">
+          <button onClick={handleLogout} className="flex items-center gap-1.5 text-xs sm:text-sm text-gray-600 hover:text-gray-900">
             <LogOut className="w-4 h-4" /><span className="hidden sm:inline">Sair</span>
           </button>
         </div>
