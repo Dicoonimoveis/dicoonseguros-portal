@@ -12,6 +12,7 @@ import {
   UserPlus,
   Loader2,
   FileText,
+  Search,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
@@ -55,7 +56,15 @@ type Extracted = {
   coberturas?: string[] | null;
 };
 
-type ExistingClient = { user_id: string; name: string; email: string; cpf: string | null; policiesCount: number };
+type ExistingClient = {
+  user_id: string;
+  name: string;
+  email: string;
+  cpf: string | null;
+  phone?: string | null;
+  address?: string | null;
+  policiesCount: number;
+};
 
 const SCAN_MESSAGES = [
   "Identificando campos da apólice...",
@@ -76,6 +85,7 @@ function ImportarApolicePage() {
   const [extracted, setExtracted] = useState<Extracted>({});
   const [aiFields, setAiFields] = useState<Set<string>>(new Set());
   const [existingClient, setExistingClient] = useState<ExistingClient | null>(null);
+  const [allProfiles, setAllProfiles] = useState<Array<{ user_id: string; name: string; email: string; cpf: string | null; phone: string | null; address: string | null }>>([]);
   const [form, setForm] = useState<Extracted>({});
   const [saving, setSaving] = useState(false);
   const invite = useServerFn(inviteClient);
@@ -83,6 +93,48 @@ function ImportarApolicePage() {
   const [savedSummary, setSavedSummary] = useState<{ policyNumber: string; clientName: string; dueDate: string; clientUserId: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch all profiles to allow manual client lookup/linking
+  useEffect(() => {
+    const fetchProfiles = async () => {
+      try {
+        const { data } = await supabase
+          .from("profiles")
+          .select("user_id, name, email, cpf, phone, address")
+          .order("name", { ascending: true });
+        if (data) {
+          setAllProfiles(data);
+        }
+      } catch (err) {
+        console.error("Error loading profiles:", err);
+      }
+    };
+    fetchProfiles();
+  }, []);
+
+  // Automatically update the client form fields when existingClient changes
+  // to ensure details are pre-filled correctly and can be verified/updated
+  useEffect(() => {
+    if (existingClient) {
+      setForm((prev) => ({
+        ...prev,
+        nome_cliente: existingClient.name,
+        cpf_cnpj: existingClient.cpf,
+        email: existingClient.email,
+        telefone: existingClient.phone || prev.telefone || "",
+        endereco: existingClient.address || prev.endereco || "",
+      }));
+    } else {
+      setForm((prev) => ({
+        ...prev,
+        nome_cliente: extracted.nome_cliente || "",
+        cpf_cnpj: extracted.cpf_cnpj || "",
+        email: extracted.email || "",
+        telefone: extracted.telefone || "",
+        endereco: extracted.endereco || "",
+      }));
+    }
+  }, [existingClient, extracted]);
 
   useEffect(() => {
     return () => { if (previewUrl) URL.revokeObjectURL(previewUrl); };
@@ -151,30 +203,37 @@ function ImportarApolicePage() {
       });
       setAiFields(filled);
 
-      // Lookup client by CPF/CNPJ
+      // Robust lookup by CPF/CNPJ or Email
+      let match = null;
+      const { data: profilesList } = await supabase
+        .from("profiles")
+        .select("user_id, name, email, cpf, phone, address");
+      const list = profilesList ?? [];
+
       if (ext.cpf_cnpj) {
         const normalizedCpf = ext.cpf_cnpj.replace(/\D/g, "");
-        const { data: profileMatch } = await supabase
-          .from("profiles")
-          .select("user_id, name, email, cpf");
-        const match = (profileMatch ?? []).find(
-          (p) => (p.cpf ?? "").replace(/\D/g, "") === normalizedCpf
-        );
-        if (match) {
-          const { count } = await supabase
-            .from("policies")
-            .select("*", { count: "exact", head: true })
-            .eq("user_id", match.user_id);
-          setExistingClient({
-            user_id: match.user_id,
-            name: match.name,
-            email: match.email,
-            cpf: match.cpf,
-            policiesCount: count ?? 0,
-          });
-        } else {
-          setExistingClient(null);
-        }
+        match = list.find((p) => (p.cpf ?? "").replace(/\D/g, "") === normalizedCpf);
+      }
+      if (!match && ext.email) {
+        match = list.find((p) => p.email?.toLowerCase() === ext.email?.toLowerCase());
+      }
+
+      if (match) {
+        const { count } = await supabase
+          .from("policies")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", match.user_id);
+        setExistingClient({
+          user_id: match.user_id,
+          name: match.name,
+          email: match.email,
+          cpf: match.cpf,
+          phone: match.phone,
+          address: match.address,
+          policiesCount: count ?? 0,
+        });
+      } else {
+        setExistingClient(null);
       }
 
       setTimeout(() => setStep(3), 600);
@@ -191,20 +250,19 @@ function ImportarApolicePage() {
     try {
       let clientUserId = existingClient?.user_id;
 
-      if (!clientUserId) {
-        const emailToUse = form.email || `cliente-${Date.now()}@dicoonseguros.com.br`;
-        const res = await invite({
-          data: {
-            email: emailToUse,
-            name: form.nome_cliente ?? emailToUse.split("@")[0],
-            cpf: form.cpf_cnpj ?? null,
-            phone: form.telefone ?? null,
-            address: form.endereco ?? null,
-          },
-        });
-        clientUserId = res.userId;
-        if (!clientUserId) throw new Error("Não foi possível criar o cliente.");
-      }
+      // Always invite/update details of the client in the DB to ensure synchronization
+      const emailToUse = form.email || existingClient?.email || `cliente-${Date.now()}@dicoonseguros.com.br`;
+      const res = await invite({
+        data: {
+          email: emailToUse,
+          name: form.nome_cliente ?? existingClient?.name ?? emailToUse.split("@")[0],
+          cpf: form.cpf_cnpj ?? null,
+          phone: form.telefone ?? null,
+          address: form.endereco ?? null,
+        },
+      });
+      clientUserId = res.userId;
+      if (!clientUserId) throw new Error("Não foi possível criar ou atualizar o cliente no banco de dados.");
 
       // Create policy
       const { data: newPolicy, error: policyErr } = await supabase.from("policies").insert({
@@ -216,7 +274,7 @@ function ImportarApolicePage() {
         start_date: form.data_inicio ?? new Date().toISOString().slice(0, 10),
         end_date: form.data_vencimento ?? new Date(Date.now() + 365 * 86400000).toISOString().slice(0, 10),
         premium: form.premio_valor ?? null,
-        coverages: form.coberturas ?? [],
+        coverages: form.coverages ?? [],
         status: "active",
       }).select().single();
       if (policyErr) throw policyErr;
@@ -309,6 +367,8 @@ function ImportarApolicePage() {
               form={form}
               setForm={setForm}
               existingClient={existingClient}
+              setExistingClient={setExistingClient}
+              allProfiles={allProfiles}
               onCancel={resetFlow}
               onConfirm={handleConfirmSave}
               saving={saving}
@@ -472,14 +532,107 @@ function Step2Processing({
   );
 }
 
+function ClientSearchSelector({
+  allProfiles,
+  selectedClient,
+  onSelect,
+}: {
+  allProfiles: Array<{ user_id: string; name: string; email: string; cpf: string | null; phone?: string | null; address?: string | null }>;
+  selectedClient: ExistingClient | null;
+  onSelect: (c: typeof allProfiles[0]) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return allProfiles.slice(0, 10);
+    const s = search.toLowerCase();
+    return allProfiles.filter(
+      (p) =>
+        p.name.toLowerCase().includes(s) ||
+        p.email.toLowerCase().includes(s) ||
+        (p.cpf ?? "").includes(s)
+    );
+  }, [allProfiles, search]);
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <input
+          type="text"
+          placeholder="Buscar cliente por nome, e-mail ou CPF..."
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setIsOpen(true);
+          }}
+          onFocus={() => setIsOpen(true)}
+          className="w-full pl-9 pr-3 py-2 rounded-md border border-gray-300 text-sm bg-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+        />
+      </div>
+
+      {isOpen && (
+        <div className="absolute left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white border border-gray-200 rounded-md shadow-lg z-50 py-1">
+          {filtered.length === 0 ? (
+            <div className="px-4 py-2.5 text-xs text-gray-500">Nenhum cliente cadastrado com esse filtro</div>
+          ) : (
+            filtered.map((c) => (
+              <button
+                key={c.user_id}
+                type="button"
+                onClick={() => {
+                  onSelect(c);
+                  setSearch("");
+                  setIsOpen(false);
+                }}
+                className={`w-full text-left px-4 py-2.5 hover:bg-gray-50 flex flex-col gap-0.5 border-b border-gray-50 last:border-b-0 ${
+                  selectedClient?.user_id === c.user_id ? "bg-emerald-50/50" : ""
+                }`}
+              >
+                <span className="text-xs font-semibold text-gray-800">{c.name}</span>
+                <span className="text-[10px] text-gray-500">
+                  {c.email} {c.cpf ? `· CPF: ${c.cpf}` : ""}
+                </span>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Step3Review({
-  extracted, aiFields, form, setForm, existingClient, onCancel, onConfirm, saving,
+  extracted,
+  aiFields,
+  form,
+  setForm,
+  existingClient,
+  setExistingClient,
+  allProfiles,
+  onCancel,
+  onConfirm,
+  saving,
 }: {
   extracted: Extracted;
   aiFields: Set<string>;
   form: Extracted;
   setForm: (f: Extracted) => void;
   existingClient: ExistingClient | null;
+  setExistingClient: (c: ExistingClient | null) => void;
+  allProfiles: Array<{ user_id: string; name: string; email: string; cpf: string | null; phone?: string | null; address?: string | null }>;
   onCancel: () => void;
   onConfirm: () => void;
   saving: boolean;
@@ -488,37 +641,116 @@ function Step3Review({
 
   return (
     <div>
-      {existingClient ? (
-        <div className="rounded-lg border-2 border-emerald-200 bg-emerald-50 p-4 mb-6 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold">
-            {existingClient.name.split(" ").map((p) => p[0]).slice(0, 2).join("")}
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <UserCheck className="w-4 h-4 text-emerald-700" />
-              <p className="font-semibold text-emerald-900">{existingClient.name}</p>
-            </div>
-            <p className="text-xs text-emerald-800">{existingClient.email} · {existingClient.cpf} · {existingClient.policiesCount} apólice(s)</p>
-          </div>
-          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-600 text-white">Vincular</span>
+      <div className="mb-6 bg-gray-50 border border-gray-200 rounded-xl p-5 shadow-sm">
+        <h3 className="text-sm font-semibold text-gray-800 mb-3">Vínculo com o Cliente</h3>
+        
+        <div className="flex gap-4 mb-4">
+          <button
+            type="button"
+            onClick={() => {
+              setExistingClient(null);
+            }}
+            className={`flex-1 py-3 px-4 rounded-lg border text-center transition font-semibold text-sm flex items-center justify-center gap-2 ${
+              !existingClient
+                ? "bg-[#E6F4EA] border-[#A8E6CE] text-[#137333] shadow-sm"
+                : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+            }`}
+          >
+            <UserPlus className="w-4 h-4" />
+            Criar Novo Cadastro
+          </button>
+          
+          <button
+            type="button"
+            onClick={async () => {
+              if (allProfiles.length > 0) {
+                const first = allProfiles[0];
+                const { count } = await supabase
+                  .from("policies")
+                  .select("*", { count: "exact", head: true })
+                  .eq("user_id", first.user_id);
+                setExistingClient({
+                  user_id: first.user_id,
+                  name: first.name,
+                  email: first.email,
+                  cpf: first.cpf,
+                  phone: first.phone ?? null,
+                  address: first.address ?? null,
+                  policiesCount: count ?? 0,
+                });
+              }
+            }}
+            className={`flex-1 py-3 px-4 rounded-lg border text-center transition font-semibold text-sm flex items-center justify-center gap-2 ${
+              existingClient
+                ? "bg-[#E6F4EA] border-[#A8E6CE] text-[#137333] shadow-sm"
+                : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+            }`}
+          >
+            <UserCheck className="w-4 h-4" />
+            Vincular a Cliente Existente
+          </button>
         </div>
-      ) : (
-        <div className="rounded-lg border-2 border-amber-200 bg-amber-50 p-4 mb-6 flex items-center gap-3">
-          <UserPlus className="w-5 h-5 text-amber-700" />
-          <p className="text-sm text-amber-900">
-            Cliente não encontrado. Um <strong>novo cadastro</strong> será criado automaticamente com os dados extraídos.
-          </p>
-        </div>
-      )}
 
-      <Section title="Dados do cliente">
+        {existingClient ? (
+          <div className="space-y-4">
+            <div className="rounded-lg border-2 border-emerald-200 bg-emerald-50 p-4 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold">
+                {existingClient.name.split(" ").map((p) => p[0]).slice(0, 2).join("")}
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <UserCheck className="w-4 h-4 text-emerald-700" />
+                  <p className="font-semibold text-emerald-900">{existingClient.name}</p>
+                </div>
+                <p className="text-xs text-emerald-800">{existingClient.email} · {existingClient.cpf ?? "Sem CPF"} · {existingClient.policiesCount} apólice(s)</p>
+              </div>
+              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-600 text-white">Vinculado</span>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">Alterar cliente vinculado:</label>
+              <ClientSearchSelector
+                allProfiles={allProfiles}
+                selectedClient={existingClient}
+                onSelect={async (c) => {
+                  const { count } = await supabase
+                    .from("policies")
+                    .select("*", { count: "exact", head: true })
+                    .eq("user_id", c.user_id);
+                  setExistingClient({
+                    user_id: c.user_id,
+                    name: c.name,
+                    email: c.email,
+                    cpf: c.cpf,
+                    phone: c.phone ?? null,
+                    address: c.address ?? null,
+                    policiesCount: count ?? 0,
+                  });
+                }}
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-lg border-2 border-amber-200 bg-amber-50 p-4 flex items-center gap-3">
+            <UserPlus className="w-5 h-5 text-amber-700" />
+            <p className="text-sm text-amber-900">
+              Nenhum cliente selecionado para vínculo. Um <strong>novo cadastro de cliente</strong> será criado com os dados preenchidos abaixo.
+            </p>
+          </div>
+        )}
+      </div>
+
+      <Section title="Dados do cliente (Serão criados ou atualizados no banco)">
         <Field label="Nome completo" name="nome_cliente" value={form.nome_cliente ?? ""} onChange={update} ai={aiFields.has("nome_cliente")} />
         <Field label="CPF/CNPJ" name="cpf_cnpj" value={form.cpf_cnpj ?? ""} onChange={update} ai={aiFields.has("cpf_cnpj")} />
         <Field label="E-mail" name="email" value={form.email ?? ""} onChange={update} ai={aiFields.has("email")} />
         <Field label="Telefone" name="telefone" value={form.telefone ?? ""} onChange={update} ai={aiFields.has("telefone")} />
+        <div className="sm:col-span-2">
+          <Field label="Endereço" name="endereco" value={form.endereco ?? ""} onChange={update} ai={aiFields.has("endereco")} />
+        </div>
       </Section>
 
-      <Section title="Dados da apólice">
+      <Section title="Dados da apólice extraída">
         <Field label="Número da apólice" name="numero_apolice" value={form.numero_apolice ?? ""} onChange={update} ai={aiFields.has("numero_apolice")} />
         <Field label="Seguradora" name="seguradora" value={form.seguradora ?? ""} onChange={update} ai={aiFields.has("seguradora")} />
         <Field label="Tipo de seguro" name="tipo_seguro" value={form.tipo_seguro ?? ""} onChange={update} ai={aiFields.has("tipo_seguro")} />
