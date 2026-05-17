@@ -565,31 +565,31 @@ function ClientesView({
 
 function NovoClienteModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const [form, setForm] = useState({
-    name: "", cpf: "", email: "", phone: "", birth_date: "", address: "", password: "",
+    name: "", cpf: "", email: "", phone: "", birth_date: "", address: "",
   });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
+  const invite = useServerFn(inviteClient);
 
   const save = async () => {
-    setSaving(true); setErr(null);
+    setSaving(true); setErr(null); setInfo(null);
     try {
-      const password = form.password || `Dicoon@${Math.random().toString(36).slice(2, 8)}`;
-      const { data, error } = await supabase.auth.signUp({
-        email: form.email,
-        password,
-        options: { data: { name: form.name }, emailRedirectTo: `${window.location.origin}/login` },
-      });
-      if (error) throw error;
-      if (data.user) {
-        await supabase.from("profiles").update({
+      const res = await invite({
+        data: {
+          email: form.email,
+          name: form.name,
           cpf: form.cpf || null,
           phone: form.phone || null,
           birth_date: form.birth_date || null,
           address: form.address || null,
-          name: form.name,
-        }).eq("user_id", data.user.id);
-      }
-      alert("Cliente cadastrado com sucesso! Um e-mail de notificação de acesso contendo as instruções de login foi enviado para " + form.email + " confirmando o cadastro no app.");
+        },
+      });
+      setInfo(
+        res.alreadyExisted
+          ? `O cliente já possuía cadastro. Os dados foram atualizados; um novo link de acesso pode ser enviado pela tela "Esqueci minha senha".`
+          : `Convite enviado para ${form.email}. O cliente receberá um link por e-mail para definir a própria senha.`,
+      );
       onSaved();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Erro ao salvar");
