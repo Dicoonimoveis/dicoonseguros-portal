@@ -506,6 +506,7 @@ function ClientesView({
   const [search, setSearch] = useState("");
   const [showNew, setShowNew] = useState(false);
   const [viewing, setViewing] = useState<Profile | null>(null);
+  const [selectedAccessClient, setSelectedAccessClient] = useState<Profile | null>(null);
 
   const filtered = profiles.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -568,6 +569,16 @@ function ClientesView({
           clientDocs={clientDocs.filter((d) => d.user_id === viewing.user_id)}
           claims={claims.filter((c) => c.user_id === viewing.user_id)}
           onClose={() => setViewing(null)}
+          onGerenciarAcesso={(p) => {
+            setViewing(null);
+            setSelectedAccessClient(p);
+          }}
+        />
+      )}
+      {selectedAccessClient && (
+        <GerenciarAcessoModal
+          client={selectedAccessClient}
+          onClose={() => setSelectedAccessClient(null)}
         />
       )}
     </>
@@ -632,13 +643,14 @@ function NovoClienteModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
 }
 
 function ClientePerfilDrawer({
-  profile, policies, clientDocs, claims, onClose,
+  profile, policies, clientDocs, claims, onClose, onGerenciarAcesso,
 }: {
   profile: Profile;
   policies: Policy[];
   clientDocs: ClientDoc[];
   claims: Claim[];
   onClose: () => void;
+  onGerenciarAcesso: (p: Profile) => void;
 }) {
   const downloadClientDoc = async (d: ClientDoc) => {
     const { data, error } = await supabase.storage.from("client-documents").createSignedUrl(d.file_path, 60);
@@ -669,7 +681,15 @@ function ClientePerfilDrawer({
       <div className="space-y-5">
         {/* Grid de Dados Pessoais */}
         <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">Dados Cadastrais</h4>
+          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500">Dados Cadastrais</h4>
+            <button
+              onClick={() => onGerenciarAcesso(profile)}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-white border border-gray-300 text-xs font-bold text-gray-700 hover:bg-gray-50 shadow-sm transition"
+            >
+              <Shield className="w-3.5 h-3.5 text-purple-600" /> Gerenciar Acesso
+            </button>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-sm">
             <KV k="E-mail" v={profile.email} />
             <KV k="CPF/CNPJ" v={profile.cpf ?? "—"} />
