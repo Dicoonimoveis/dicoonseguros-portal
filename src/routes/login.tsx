@@ -75,12 +75,12 @@ function LoginPage() {
             .eq("user_id", userId);
           isAdmin = (roles ?? []).some((r) => r.role === "admin");
         }
-        
+
         if (roleTab === "admin" && !isAdmin) {
-           setError("Acesso negado. Usuário não é administrador.");
-           await supabase.auth.signOut();
-           setIsLoading(false);
-           return;
+          setError("Acesso negado. Usuário não é administrador.");
+          await supabase.auth.signOut();
+          setIsLoading(false);
+          return;
         }
 
         navigate({ to: isAdmin ? "/dashboard-admin" : "/dashboard-cliente" });
@@ -265,7 +265,7 @@ function LoginPage() {
               </p>
             </>
           )}
-          
+
           {mode === "signup" && (
             <p className="text-sm text-gray-500">
               Já tem uma conta?{" "}
@@ -300,3 +300,4 @@ function LoginPage() {
     </div>
   );
 }
+Auth session missing!
