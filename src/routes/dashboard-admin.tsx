@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { signOut } from "@/lib/auth";
-import * as XLSX from "xlsx";
+import * as XLSX from "@e965/xlsx";
 
 export const Route = createFileRoute("/dashboard-admin")({
   beforeLoad: async () => {
