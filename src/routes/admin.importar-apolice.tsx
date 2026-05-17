@@ -14,6 +14,8 @@ import {
   FileText,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useServerFn } from "@tanstack/react-start";
+import { inviteClient } from "@/lib/admin-users.functions";
 
 export const Route = createFileRoute("/admin/importar-apolice")({
   beforeLoad: async () => {
@@ -76,6 +78,7 @@ function ImportarApolicePage() {
   const [existingClient, setExistingClient] = useState<ExistingClient | null>(null);
   const [form, setForm] = useState<Extracted>({});
   const [saving, setSaving] = useState(false);
+  const invite = useServerFn(inviteClient);
   const [error, setError] = useState<string | null>(null);
   const [savedSummary, setSavedSummary] = useState<{ policyNumber: string; clientName: string; dueDate: string; clientUserId: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -189,27 +192,18 @@ function ImportarApolicePage() {
       let clientUserId = existingClient?.user_id;
 
       if (!clientUserId) {
-        // Create new auth user via signUp (with a temp password)
-        const tempPassword = `Dicoon@${Math.random().toString(36).slice(2, 8)}${Date.now().toString().slice(-4)}`;
         const emailToUse = form.email || `cliente-${Date.now()}@dicoonseguros.com.br`;
-        const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
-          email: emailToUse,
-          password: tempPassword,
-          options: {
-            emailRedirectTo: `${window.location.origin}/login`,
-            data: { name: form.nome_cliente ?? emailToUse.split("@")[0] },
+        const res = await invite({
+          data: {
+            email: emailToUse,
+            name: form.nome_cliente ?? emailToUse.split("@")[0],
+            cpf: form.cpf_cnpj ?? null,
+            phone: form.telefone ?? null,
+            address: form.endereco ?? null,
           },
         });
-        if (signUpErr) throw signUpErr;
-        clientUserId = signUpData.user?.id;
+        clientUserId = res.userId;
         if (!clientUserId) throw new Error("Não foi possível criar o cliente.");
-        // Update profile extra fields
-        await supabase.from("profiles").update({
-          cpf: form.cpf_cnpj ?? null,
-          phone: form.telefone ?? null,
-          address: form.endereco ?? null,
-          name: form.nome_cliente ?? undefined,
-        }).eq("user_id", clientUserId);
       }
 
       // Create policy

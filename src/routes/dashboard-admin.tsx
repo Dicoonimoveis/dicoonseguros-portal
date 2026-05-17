@@ -8,6 +8,8 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { signOut } from "@/lib/auth";
+import { useServerFn } from "@tanstack/react-start";
+import { inviteClient } from "@/lib/admin-users.functions";
 import * as XLSX from "@e965/xlsx";
 
 export const Route = createFileRoute("/dashboard-admin")({
@@ -563,31 +565,31 @@ function ClientesView({
 
 function NovoClienteModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const [form, setForm] = useState({
-    name: "", cpf: "", email: "", phone: "", birth_date: "", address: "", password: "",
+    name: "", cpf: "", email: "", phone: "", birth_date: "", address: "",
   });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
+  const invite = useServerFn(inviteClient);
 
   const save = async () => {
-    setSaving(true); setErr(null);
+    setSaving(true); setErr(null); setInfo(null);
     try {
-      const password = form.password || `Dicoon@${Math.random().toString(36).slice(2, 8)}`;
-      const { data, error } = await supabase.auth.signUp({
-        email: form.email,
-        password,
-        options: { data: { name: form.name }, emailRedirectTo: `${window.location.origin}/login` },
-      });
-      if (error) throw error;
-      if (data.user) {
-        await supabase.from("profiles").update({
+      const res = await invite({
+        data: {
+          email: form.email,
+          name: form.name,
           cpf: form.cpf || null,
           phone: form.phone || null,
           birth_date: form.birth_date || null,
           address: form.address || null,
-          name: form.name,
-        }).eq("user_id", data.user.id);
-      }
-      alert("Cliente cadastrado com sucesso! Um e-mail de notificação de acesso contendo as instruções de login foi enviado para " + form.email + " confirmando o cadastro no app.");
+        },
+      });
+      setInfo(
+        res.alreadyExisted
+          ? `O cliente já possuía cadastro. Os dados foram atualizados; um novo link de acesso pode ser enviado pela tela "Esqueci minha senha".`
+          : `Convite enviado para ${form.email}. O cliente receberá um link por e-mail para definir a própria senha.`,
+      );
       onSaved();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Erro ao salvar");
@@ -605,9 +607,12 @@ function NovoClienteModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
         <Input label="Telefone" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} />
         <Input label="Data de nascimento" type="date" value={form.birth_date} onChange={(v) => setForm({ ...form, birth_date: v })} />
         <Input label="Endereço" value={form.address} onChange={(v) => setForm({ ...form, address: v })} />
-        <Input label="Senha inicial" type="text" value={form.password} onChange={(v) => setForm({ ...form, password: v })} placeholder="Deixe em branco para gerar" />
       </div>
+      <p className="text-xs text-gray-500 mt-3">
+        O cliente receberá um e-mail com um link seguro para definir a própria senha. Nenhuma senha é gerada ou exibida aqui.
+      </p>
       {err && <p className="text-sm text-red-600 mt-3">{err}</p>}
+      {info && <p className="text-sm text-emerald-700 mt-3">{info}</p>}
       <div className="flex justify-end gap-2 mt-5">
         <button onClick={onClose} className="px-4 py-2 rounded-md border border-gray-300 text-sm font-medium text-gray-700 bg-white">Cancelar</button>
         <button onClick={save} disabled={saving || !form.name || !form.email} className="px-4 py-2 rounded-md text-sm font-semibold text-white disabled:opacity-60" style={{ backgroundColor: PRIMARY }}>
@@ -1321,6 +1326,7 @@ function ImportarPlanilhaView({ onReload }: { onReload: () => void }) {
   const [rows, setRows] = useState<ImportRow[]>([]);
   const [processing, setProcessing] = useState(false);
   const [result, setResult] = useState<string | null>(null);
+  const invite = useServerFn(inviteClient);
 
   const handleFile = async (f: File) => {
     if (f.size > 20 * 1024 * 1024) { alert("Máximo 20 MB"); return; }
@@ -1351,18 +1357,15 @@ function ImportarPlanilhaView({ onReload }: { onReload: () => void }) {
           userId = profile?.user_id;
         }
         if (!userId && r.email) {
-          const password = `Dicoon@${Math.random().toString(36).slice(2, 8)}`;
-          const { data: sign } = await supabase.auth.signUp({
-            email: r.email, password,
-            options: { data: { name: r.nome_cliente ?? r.email }, emailRedirectTo: `${window.location.origin}/login` },
-          });
-          userId = sign.user?.id;
-          if (userId) {
-            await supabase.from("profiles").update({
-              cpf: r.cpf_cnpj ?? null, phone: r.telefone ?? null,
+          const res = await invite({
+            data: {
+              email: r.email,
               name: r.nome_cliente ?? r.email,
-            }).eq("user_id", userId);
-          }
+              cpf: r.cpf_cnpj ?? null,
+              phone: r.telefone ?? null,
+            },
+          });
+          userId = res.userId;
         }
         if (!userId) { skipped++; continue; }
         await supabase.from("policies").insert({
