@@ -1357,18 +1357,15 @@ function ImportarPlanilhaView({ onReload }: { onReload: () => void }) {
           userId = profile?.user_id;
         }
         if (!userId && r.email) {
-          const password = `Dicoon@${Math.random().toString(36).slice(2, 8)}`;
-          const { data: sign } = await supabase.auth.signUp({
-            email: r.email, password,
-            options: { data: { name: r.nome_cliente ?? r.email }, emailRedirectTo: `${window.location.origin}/login` },
-          });
-          userId = sign.user?.id;
-          if (userId) {
-            await supabase.from("profiles").update({
-              cpf: r.cpf_cnpj ?? null, phone: r.telefone ?? null,
+          const res = await invite({
+            data: {
+              email: r.email,
               name: r.nome_cliente ?? r.email,
-            }).eq("user_id", userId);
-          }
+              cpf: r.cpf_cnpj ?? null,
+              phone: r.telefone ?? null,
+            },
+          });
+          userId = res.userId;
         }
         if (!userId) { skipped++; continue; }
         await supabase.from("policies").insert({
