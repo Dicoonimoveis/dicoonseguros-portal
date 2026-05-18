@@ -68,7 +68,8 @@ export const Route = createFileRoute("/api/extract-policy")({
             if (body.mimeType === "application/pdf") {
               const buffer = Buffer.from(body.fileBase64, "base64");
               try {
-                const data = await pdfParse(buffer);
+                const parser = new PDFParse({ data: new Uint8Array(buffer) });
+                const data = await parser.getText();
                 rawText = data.text || "";
               } catch (e) {
                 console.error("PDF parse error:", e);
