@@ -274,7 +274,7 @@ function ImportarApolicePage() {
         start_date: form.data_inicio ?? new Date().toISOString().slice(0, 10),
         end_date: form.data_vencimento ?? new Date(Date.now() + 365 * 86400000).toISOString().slice(0, 10),
         premium: form.premio_valor ?? null,
-        coverages: form.coverages ?? [],
+        coverages: form.coberturas ?? [],
         status: "active",
       }).select().single();
       if (policyErr) throw policyErr;

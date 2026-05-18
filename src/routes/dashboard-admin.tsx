@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { signOut } from "@/lib/auth";
 import { useServerFn } from "@tanstack/react-start";
 import { inviteClient } from "@/lib/admin-users.functions";
+// @ts-ignore
 import * as XLSX from "@e965/xlsx";
 
 export const Route = createFileRoute("/dashboard-admin")({
