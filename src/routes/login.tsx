@@ -30,6 +30,7 @@ const PRIMARY = "#1D9E75";
 function LoginPage() {
   const navigate = useNavigate();
   const [mode, setMode] = useState<"signin" | "forgot" | "signup">("signin");
+  const [userType, setUserType] = useState<"client" | "admin">("client");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -70,6 +71,13 @@ function LoginPage() {
             .select("role")
             .eq("user_id", userId);
           isAdmin = (roles ?? []).some((r) => r.role === "admin");
+        }
+
+        if (userType === "admin" && !isAdmin) {
+          setError("Acesso negado. Esta conta não possui perfil administrativo.");
+          await supabase.auth.signOut();
+          setIsLoading(false);
+          return;
         }
 
         if (!isAdmin) {
@@ -154,16 +162,16 @@ function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#F5F5F5] px-4 py-8 font-sans">
-      <div className="w-full max-w-[390px] bg-white rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-black/5 p-8">
+      <div className="w-full max-w-[390px] bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-black/5 p-8">
         <div className="flex flex-col items-center text-center mb-6">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-1 justify-center">
             <Shield className="w-6 h-6" style={{ color: PRIMARY }} strokeWidth={2.4} />
             <h1 className="text-xl font-bold" style={{ color: PRIMARY }}>
               Dicoon Seguros
             </h1>
           </div>
-          <p className="text-xs text-gray-500">
-            {mode === "signup" ? "Cadastro de Novo Cliente" : "Portal de Acesso"}
+          <p className="text-xs text-gray-400">
+            Portal de Acesso
           </p>
         </div>
 
@@ -181,10 +189,46 @@ function LoginPage() {
           </div>
         )}
 
+        {/* Custom Tab Selector (Cliente / Administrador) */}
+        {mode === "signin" && (
+          <div className="flex bg-[#F0F2F5] p-1 rounded-xl mb-6">
+            <button
+              type="button"
+              onClick={() => {
+                setUserType("client");
+                setError("");
+                setInfo("");
+              }}
+              className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                userType === "client"
+                  ? "bg-white text-gray-800 shadow-sm"
+                  : "text-gray-500 hover:text-gray-800"
+              }`}
+            >
+              Cliente
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setUserType("admin");
+                setError("");
+                setInfo("");
+              }}
+              className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                userType === "admin"
+                  ? "bg-white text-gray-800 shadow-sm"
+                  : "text-gray-500 hover:text-gray-800"
+              }`}
+            >
+              Administrador
+            </button>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           {mode === "signup" && (
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1.5">
+              <label htmlFor="name" className="block text-sm font-semibold text-gray-700 mb-1.5">
                 Nome Completo
               </label>
               <input
@@ -200,7 +244,7 @@ function LoginPage() {
           )}
 
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1.5">
+            <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-1.5">
               E-mail
             </label>
             <input
@@ -217,7 +261,7 @@ function LoginPage() {
           {mode === "signup" && (
             <>
               <div>
-                <label htmlFor="cpf" className="block text-sm font-medium text-gray-700 mb-1.5">
+                <label htmlFor="cpf" className="block text-sm font-semibold text-gray-700 mb-1.5">
                   CPF
                 </label>
                 <input
@@ -232,7 +276,7 @@ function LoginPage() {
               </div>
 
               <div>
-                <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1.5">
+                <label htmlFor="phone" className="block text-sm font-semibold text-gray-700 mb-1.5">
                   WhatsApp / Celular
                 </label>
                 <input
@@ -250,7 +294,7 @@ function LoginPage() {
 
           {mode !== "forgot" && (
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1.5">
+              <label htmlFor="password" className="block text-sm font-semibold text-gray-700 mb-1.5">
                 Senha
               </label>
               <div className="relative">
@@ -293,24 +337,28 @@ function LoginPage() {
           </button>
         </form>
 
-        <div className="mt-5 text-center flex flex-col gap-2.5 border-t border-gray-100 pt-4">
+        <div className="mt-5 text-center flex flex-col gap-3">
           {mode === "signin" ? (
             <>
               <button
                 type="button"
-                onClick={() => { setMode("signup"); setError(""); setInfo(""); }}
-                className="text-xs font-semibold hover:underline"
-                style={{ color: PRIMARY }}
-              >
-                Não tem conta? Cadastre-se
-              </button>
-              <button
-                type="button"
                 onClick={() => { setMode("forgot"); setError(""); setInfo(""); }}
-                className="text-xs hover:underline text-gray-400 hover:text-gray-600"
+                className="text-xs font-semibold hover:underline block mx-auto text-[#1D9E75]"
               >
                 Esqueci minha senha
               </button>
+              {userType === "client" && (
+                <p className="text-xs text-gray-500">
+                  Não tem uma conta?{" "}
+                  <button
+                    type="button"
+                    onClick={() => { setMode("signup"); setError(""); setInfo(""); }}
+                    className="font-semibold text-[#1D9E75] hover:underline"
+                  >
+                    Cadastre-se
+                  </button>
+                </p>
+              )}
             </>
           ) : mode === "signup" ? (
             <button
