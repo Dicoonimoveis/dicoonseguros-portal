@@ -69,17 +69,24 @@ export const inviteClient = createServerFn({ method: 'POST' })
       userId = match.id;
     }
 
-    // Upsert profile fields (handle_new_user trigger creates the row on first signup).
-    await supabaseAdmin
+    // Upsert profile fields (guarantees the profile exists and is up to date).
+    const { error: profileErr } = await supabaseAdmin
       .from('profiles')
-      .update({
+      .upsert({
+        user_id: userId,
+        email: email,
         name: data.name,
-        cpf: data.cpf ?? null,
-        phone: data.phone ?? null,
-        birth_date: data.birth_date ?? null,
-        address: data.address ?? null,
-      })
-      .eq('user_id', userId);
+        cpf: data.cpf || null,
+        phone: data.phone || null,
+        birth_date: data.birth_date || null,
+        address: data.address || null,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id' });
+
+    if (profileErr) {
+      console.error('inviteClient profile upsert failed:', profileErr);
+      throw new Error(`Falha ao salvar dados do cliente: ${profileErr.message}`);
+    }
 
     return { userId, alreadyExisted };
   });

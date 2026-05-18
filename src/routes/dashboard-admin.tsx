@@ -1571,9 +1571,9 @@ function ImportarPlanilhaView({ onReload }: { onReload: () => void }) {
           const res = await invite({
             data: {
               email: r.email,
-              name: r.nome_cliente ?? r.email,
-              cpf: r.cpf_cnpj ?? null,
-              phone: r.telefone ?? null,
+              name: r.nome_cliente || r.email,
+              cpf: r.cpf_cnpj || null,
+              phone: r.telefone || null,
             },
           });
           userId = res.userId;
@@ -2311,10 +2311,10 @@ function ImportarApoliceView({
       const res = await invite({
         data: {
           email: emailToUse,
-          name: form.nome_cliente ?? existingClient?.name ?? emailToUse.split("@")[0],
-          cpf: form.cpf_cnpj ?? null,
-          phone: form.telefone ?? null,
-          address: form.endereco ?? null,
+          name: form.nome_cliente || existingClient?.name || emailToUse.split("@")[0],
+          cpf: form.cpf_cnpj || null,
+          phone: form.telefone || null,
+          address: form.endereco || null,
         },
       });
       clientUserId = res.userId;
