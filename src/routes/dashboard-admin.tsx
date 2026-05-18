@@ -979,6 +979,7 @@ function ApolicesView({
   onSwitch: (k: NavKey) => void;
 }) {
   const [showNew, setShowNew] = useState(false);
+  const [editingPolicy, setEditingPolicy] = useState<Policy | null>(null);
   const [search, setSearch] = useState("");
   const filtered = policies.filter((p) =>
     p.policy_number.toLowerCase().includes(search.toLowerCase()) ||
@@ -996,6 +997,24 @@ function ApolicesView({
       window.open(data.signedUrl, "_blank");
     } else {
       alert("Não foi possível carregar o arquivo original.");
+    }
+  };
+
+  const deletePolicy = async (policy: Policy) => {
+    if (!confirm(`Tem certeza de que deseja excluir permanentemente a apólice "${policy.policy_number}"?`)) return;
+    
+    try {
+      // 1. Apagar documentos de apólice
+      await supabase.from("policy_documents").delete().eq("policy_id", policy.id);
+      
+      // 2. Apagar apólice do banco
+      const { error } = await supabase.from("policies").delete().eq("id", policy.id);
+      if (error) throw error;
+      
+      toast.success("Apólice excluída com sucesso!");
+      onReload();
+    } catch (err: any) {
+      alert("Erro ao excluir apólice: " + err.message);
     }
   };
 
@@ -1029,6 +1048,7 @@ function ApolicesView({
               <th className="px-4 py-3 font-medium">Vencimento</th>
               <th className="px-4 py-3 font-medium">PDF</th>
               <th className="px-4 py-3 font-medium">Status</th>
+              <th className="px-4 py-3 font-medium text-right">Ações</th>
             </tr></thead>
             <tbody>
               {filtered.map((p, i) => {
@@ -1055,16 +1075,45 @@ function ApolicesView({
                       )}
                     </td>
                     <td className="px-4 py-3"><span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">{p.status}</span></td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="inline-flex gap-2">
+                        <button
+                          onClick={() => setEditingPolicy(p)}
+                          className="p-1 hover:bg-gray-100 rounded text-blue-600 hover:text-blue-800 transition"
+                          title="Editar Apólice"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => deletePolicy(p)}
+                          className="p-1 hover:bg-gray-100 rounded text-red-600 hover:text-red-800 transition"
+                          title="Excluir Apólice"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 );
               })}
-              {filtered.length === 0 && <tr><td colSpan={7} className="px-4 py-6 text-center text-sm text-gray-400">Nenhuma apólice ainda.</td></tr>}
+              {filtered.length === 0 && <tr><td colSpan={8} className="px-4 py-6 text-center text-sm text-gray-400">Nenhuma apólice ainda.</td></tr>}
             </tbody>
           </table>
         </div>
       </div>
 
       {showNew && <NovaApoliceModal profiles={profiles} onClose={() => setShowNew(false)} onSaved={() => { setShowNew(false); onReload(); }} />}
+      {editingPolicy && (
+        <EditarApoliceModal
+          policy={editingPolicy}
+          profiles={profiles}
+          onClose={() => setEditingPolicy(null)}
+          onSaved={() => {
+            setEditingPolicy(null);
+            onReload();
+          }}
+        />
+      )}
     </>
   );
 }
@@ -1153,6 +1202,119 @@ function NovaApoliceModal({ profiles, onClose, onSaved }: { profiles: Profile[];
         <button onClick={onClose} className="px-4 py-2 rounded-md border border-gray-300 text-sm font-medium text-gray-700 bg-white">Cancelar</button>
         <button onClick={save} disabled={saving || !form.user_id || !form.policy_number} className="px-4 py-2 rounded-md text-sm font-semibold text-white disabled:opacity-60" style={{ backgroundColor: PRIMARY }}>
           {saving ? "Salvando..." : "Salvar apólice"}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+function EditarApoliceModal({
+  policy, profiles, onClose, onSaved,
+}: {
+  policy: Policy;
+  profiles: Profile[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [form, setForm] = useState({
+    user_id: policy.user_id,
+    policy_number: policy.policy_number,
+    policy_type: policy.policy_type,
+    insurer: policy.insurer,
+    item_label: policy.item_label || "",
+    start_date: policy.start_date,
+    end_date: policy.end_date,
+    premium: policy.premium || "",
+    frequencia: "anual",
+    coverages: (policy.coverages ?? []).join(", "),
+  });
+  const [file, setFile] = useState<File | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const save = async () => {
+    setSaving(true); setErr(null);
+    try {
+      const { error } = await supabase
+        .from("policies")
+        .update({
+          user_id: form.user_id,
+          policy_number: form.policy_number,
+          policy_type: form.policy_type,
+          insurer: form.insurer,
+          item_label: form.item_label || null,
+          start_date: form.start_date,
+          end_date: form.end_date,
+          premium: form.premium || null,
+          coverages: form.coverages.split(",").map((s) => s.trim()).filter(Boolean),
+        })
+        .eq("id", policy.id);
+      if (error) throw error;
+
+      if (file) {
+        const ext = file.name.split(".").pop() ?? "pdf";
+        const path = `${form.user_id}/${policy.id}.${ext}`;
+        const { error: upErr } = await supabase.storage.from("policy-documents").upload(path, file, { upsert: true, contentType: file.type });
+        if (!upErr) {
+          const { data: doc } = await supabase.from("policy_documents").select("id").eq("policy_id", policy.id).maybeSingle();
+          if (doc) {
+            await supabase.from("policy_documents").update({ file_path: path, file_name: file.name }).eq("id", doc.id);
+          } else {
+            await supabase.from("policy_documents").insert({
+              policy_id: policy.id, user_id: form.user_id, file_path: path, file_name: file.name, doc_type: "apolice",
+            });
+          }
+        }
+      }
+      toast.success("Apólice atualizada com sucesso!");
+      onSaved();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Erro ao salvar");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal title="Editar apólice" onClose={onClose}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="sm:col-span-2">
+          <label className="text-xs font-medium text-gray-700 mb-1 block">Cliente</label>
+          <select value={form.user_id} onChange={(e) => setForm({ ...form, user_id: e.target.value })} className="w-full px-3 py-2 rounded-md border border-gray-300 text-sm bg-white">
+            <option value="">Selecionar cliente</option>
+            {profiles.map((p) => <option key={p.user_id} value={p.user_id}>{p.name} — {p.email}</option>)}
+          </select>
+        </div>
+        <Input label="Número da apólice" value={form.policy_number} onChange={(v) => setForm({ ...form, policy_number: v })} />
+        <Input label="Tipo de seguro" value={form.policy_type} onChange={(v) => setForm({ ...form, policy_type: v })} />
+        <Input label="Seguradora" value={form.insurer} onChange={(v) => setForm({ ...form, insurer: v })} />
+        <Input label="Bem segurado" value={form.item_label} onChange={(v) => setForm({ ...form, item_label: v })} />
+        <Input label="Data início" type="date" value={form.start_date} onChange={(v) => setForm({ ...form, start_date: v })} />
+        <Input label="Data vencimento" type="date" value={form.end_date} onChange={(v) => setForm({ ...form, end_date: v })} />
+        <Input label="Valor do prêmio (R$)" value={form.premium} onChange={(v) => setForm({ ...form, premium: v })} />
+        <div>
+          <label className="text-xs font-medium text-gray-700 mb-1 block">Frequência</label>
+          <select value={form.frequencia} onChange={(e) => setForm({ ...form, frequencia: e.target.value })} className="w-full px-3 py-2 rounded-md border border-gray-300 text-sm bg-white">
+            <option value="mensal">Mensal</option>
+            <option value="anual">Anual</option>
+            <option value="semestral">Semestral</option>
+          </select>
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-xs font-medium text-gray-700 mb-1 block">Coberturas (separe por vírgula)</label>
+          <textarea value={form.coverages} onChange={(e) => setForm({ ...form, coverages: e.target.value })} rows={2} className="w-full px-3 py-2 rounded-md border border-gray-300 text-sm" />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-xs font-medium text-gray-700 mb-1 block">Substituir PDF da apólice (Opcional)</label>
+          <input type="file" accept="application/pdf,image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="text-sm" />
+          {file && <p className="text-xs text-gray-500 mt-1">{file.name}</p>}
+        </div>
+      </div>
+      {err && <p className="text-sm text-red-600 mt-3">{err}</p>}
+      <div className="flex justify-end gap-2 mt-5">
+        <button onClick={onClose} className="px-4 py-2 rounded-md border border-gray-300 text-sm font-medium text-gray-700 bg-white">Cancelar</button>
+        <button onClick={save} disabled={saving || !form.user_id || !form.policy_number} className="px-4 py-2 rounded-md text-sm font-semibold text-white disabled:opacity-60" style={{ backgroundColor: PRIMARY }}>
+          {saving ? "Salvando..." : "Salvar alterações"}
         </button>
       </div>
     </Modal>
