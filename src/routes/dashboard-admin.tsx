@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { signOut } from "@/lib/auth";
 import { useServerFn } from "@tanstack/react-start";
 import { inviteClient } from "@/lib/admin-users.functions";
+import { extractPdfText } from "@/lib/pdf";
 // @ts-ignore
 import * as XLSX from "@e965/xlsx";
 import { toast } from "sonner";
@@ -2545,6 +2546,7 @@ function ImportarApoliceView({
   const [aiFields, setAiFields] = useState<Set<string>>(new Set());
   const [existingClient, setExistingClient] = useState<ExistingClient | null>(null);
   const [form, setForm] = useState<Extracted>({});
+  const [pdfText, setPdfText] = useState<string>("");
   const [saving, setSaving] = useState(false);
   const invite = useServerFn(inviteClient);
   const [error, setError] = useState<string | null>(null);
@@ -2598,6 +2600,19 @@ function ImportarApoliceView({
   const startExtraction = async (f: File) => {
     setStep(2);
     setProgress(0);
+    setPdfText("");
+
+    let clientPdfText = "";
+    if (f.type === "application/pdf") {
+      try {
+        setStatusMsg("Extraindo texto do PDF no frontend...");
+        clientPdfText = await extractPdfText(f);
+        setPdfText(clientPdfText);
+      } catch (pdfErr) {
+        console.error("Erro ao ler PDF no frontend:", pdfErr);
+      }
+    }
+
     setStatusMsg(SCAN_MESSAGES[0]);
 
     // Simulated progress while AI runs
@@ -2747,13 +2762,19 @@ function ImportarApoliceView({
           .from("policy-documents")
           .upload(path, file, { upsert: true, contentType: file.type });
         if (!upErr) {
-          await supabase.from("policy_documents").insert({
+          const { error: docErr } = await supabase.from("policy_documents").insert({
             policy_id: newPolicy.id,
             user_id: clientUserId,
             file_path: path,
             file_name: file.name,
             doc_type: "apolice",
+            texto_extraido: pdfText || null,
           });
+          if (docErr) {
+            console.error("Erro ao salvar documento da apólice:", docErr);
+          } else if (pdfText) {
+            console.log("Texto do PDF salvo com sucesso no banco de dados.");
+          }
         }
       }
 
