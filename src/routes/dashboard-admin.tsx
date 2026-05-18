@@ -2501,6 +2501,7 @@ type Extracted = {
   bem_segurado?: string | null;
   data_inicio?: string | null;
   data_vencimento?: string | null;
+  data_renovacao?: string | null;
   premio_valor?: string | null;
   frequencia_pagamento?: string | null;
   coberturas?: string[] | null;
@@ -2713,6 +2714,7 @@ function ImportarApoliceView({
         insurer: form.seguradora ?? "—",
         start_date: form.data_inicio ?? new Date().toISOString().slice(0, 10),
         end_date: form.data_vencimento ?? new Date(Date.now() + 365 * 86400000).toISOString().slice(0, 10),
+        renewal_date: form.data_renovacao || form.data_vencimento || new Date(Date.now() + 365 * 86400000).toISOString().slice(0, 10),
         premium: form.premio_valor ?? null,
         coverages: form.coberturas ?? [],
         status: "active",
@@ -3199,6 +3201,7 @@ function Step3Review({
         <Field label="Bem segurado" name="bem_segurado" value={form.bem_segurado ?? ""} onChange={update} ai={aiFields.has("bem_segurado")} />
         <Field label="Data de início" name="data_inicio" value={form.data_inicio ?? ""} onChange={update} ai={aiFields.has("data_inicio")} type="date" />
         <Field label="Data de vencimento" name="data_vencimento" value={form.data_vencimento ?? ""} onChange={update} ai={aiFields.has("data_vencimento")} type="date" />
+        <Field label="Data de renovação" name="data_renovacao" value={form.data_renovacao ?? ""} onChange={update} ai={aiFields.has("data_renovacao")} type="date" />
         <Field label="Valor do prêmio (R$)" name="premio_valor" value={form.premio_valor ?? ""} onChange={update} ai={aiFields.has("premio_valor")} />
         <div>
           <FieldLabel label="Frequência" ai={aiFields.has("frequencia_pagamento")} />
