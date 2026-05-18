@@ -2552,31 +2552,22 @@ function ImportarApoliceView({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  // Automatically update the client form fields when existingClient changes
-  // to ensure details are pre-filled correctly and can be verified/updated
+  // Sync client identity fields into the form when an existing client is linked.
+  // Policy fields (apolice number, dates, etc.) are already set by setForm(ext) directly
+  // after extraction — do NOT overwrite them here to avoid stale-closure bugs.
   useEffect(() => {
-    if (existingClient) {
-      setForm((prev) => ({
-        ...prev,
-        nome_cliente: existingClient.name,
-        cpf_cnpj: existingClient.cpf,
-        email: existingClient.email,
-        telefone: existingClient.phone || prev.telefone || "",
-        endereco: existingClient.address || prev.endereco || "",
-        birth_date: existingClient.birth_date || prev.birth_date || "",
-      }));
-    } else {
-      setForm((prev) => ({
-        ...prev,
-        nome_cliente: extracted.nome_cliente || "",
-        cpf_cnpj: extracted.cpf_cnpj || "",
-        email: extracted.email || "",
-        telefone: extracted.telefone || "",
-        endereco: extracted.endereco || "",
-        birth_date: extracted.birth_date || "",
-      }));
-    }
-  }, [existingClient, extracted]);
+    if (!existingClient) return;
+    setForm((prev) => ({
+      ...prev,
+      nome_cliente: existingClient.name,
+      cpf_cnpj: existingClient.cpf,
+      email: existingClient.email,
+      telefone: existingClient.phone || prev.telefone || "",
+      endereco: existingClient.address || prev.endereco || "",
+      birth_date: existingClient.birth_date || prev.birth_date || "",
+    }));
+  }, [existingClient]); // intentionally excludes 'extracted' — setForm(ext) handles initial fill
+
 
   useEffect(() => {
     return () => { if (previewUrl) URL.revokeObjectURL(previewUrl); };

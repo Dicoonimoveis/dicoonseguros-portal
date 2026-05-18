@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { createClient } from "@supabase/supabase-js";
+import pdfParse from "pdf-parse";
 
 const EXTRACTION_PROMPT = `Você é um extrator especialista em apólices de seguro brasileiras. 
 Analise a apólice fornecida (PDF ou Imagem) e extraia todas as informações solicitadas.
@@ -63,7 +63,19 @@ export const Route = createFileRoute("/api/extract-policy")({
           // 1. Decodificar texto bruto do base64 para o scanner Regex de alta fidelidade
           const regexMatches: Record<string, any> = {};
           try {
-            const rawText = Buffer.from(body.fileBase64, "base64").toString("utf-8");
+            let rawText = "";
+            if (body.mimeType === "application/pdf") {
+              const buffer = Buffer.from(body.fileBase64, "base64");
+              try {
+                const data = await pdfParse(buffer);
+                rawText = data.text || "";
+              } catch (e) {
+                console.error("PDF parse error:", e);
+                rawText = buffer.toString("utf-8"); // fallback raw bytes
+              }
+            } else {
+              rawText = Buffer.from(body.fileBase64, "base64").toString("utf-8");
+            }
 
             // Email
             const emailMatch = rawText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
