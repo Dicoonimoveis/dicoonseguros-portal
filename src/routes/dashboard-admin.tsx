@@ -2569,12 +2569,12 @@ function ImportarApoliceView({
     }
     setForm((prev) => ({
       ...prev,
-      nome_cliente: existingClient.name,
-      cpf_cnpj: existingClient.cpf,
-      email: existingClient.email,
-      telefone: existingClient.phone || prev.telefone || "",
-      endereco: existingClient.address || prev.endereco || "",
-      birth_date: existingClient.birth_date || prev.birth_date || "",
+      nome_cliente: existingClient.name || prev.nome_cliente || extracted.nome_cliente || "",
+      cpf_cnpj: existingClient.cpf || prev.cpf_cnpj || extracted.cpf_cnpj || "",
+      email: existingClient.email || prev.email || extracted.email || "",
+      telefone: existingClient.phone || prev.telefone || extracted.telefone || "",
+      endereco: existingClient.address || prev.endereco || extracted.endereco || "",
+      birth_date: existingClient.birth_date || prev.birth_date || extracted.birth_date || "",
     }));
   }, [existingClient, extracted]);
 
@@ -2636,7 +2636,7 @@ function ImportarApoliceView({
       const json = await res.json() as { extracted: Extracted };
       const ext = json.extracted ?? {};
       setExtracted(ext);
-      setForm(ext);
+      
       // Mark which fields came from AI
       const filled = new Set<string>();
       Object.entries(ext).forEach(([k, v]) => {
@@ -2646,7 +2646,7 @@ function ImportarApoliceView({
       });
       setAiFields(filled);
 
-      // Robust lookup by CPF/CNPJ or Email
+      // Robust lookup by CPF/CNPJ, Email, or Name
       let match = null;
       const list = profiles ?? [];
 
@@ -2657,13 +2657,17 @@ function ImportarApoliceView({
       if (!match && ext.email) {
         match = list.find((p) => p.email?.toLowerCase() === ext.email?.toLowerCase());
       }
+      if (!match && ext.nome_cliente) {
+        const normalizedExtName = ext.nome_cliente.toLowerCase().trim();
+        match = list.find((p) => p.name?.toLowerCase().trim() === normalizedExtName);
+      }
 
       if (match) {
         const { count } = await supabase
           .from("policies")
           .select("*", { count: "exact", head: true })
           .eq("user_id", match.user_id);
-        setExistingClient({
+        const existing = {
           user_id: match.user_id,
           name: match.name,
           email: match.email,
@@ -2672,9 +2676,22 @@ function ImportarApoliceView({
           address: match.address ?? null,
           birth_date: match.birth_date ?? null,
           policiesCount: count ?? 0,
+        };
+        setExistingClient(existing);
+        
+        // Merge AI fields and existing client fields (force extreme prefill)
+        setForm({
+          ...ext,
+          nome_cliente: existing.name || ext.nome_cliente || "",
+          cpf_cnpj: existing.cpf || ext.cpf_cnpj || "",
+          email: existing.email || ext.email || "",
+          telefone: existing.phone || ext.telefone || "",
+          endereco: existing.address || ext.endereco || "",
+          birth_date: existing.birth_date || ext.birth_date || "",
         });
       } else {
         setExistingClient(null);
+        setForm(ext);
       }
 
       setTimeout(() => setStep(3), 600);
@@ -3091,6 +3108,15 @@ function Step3Review({
             type="button"
             onClick={() => {
               setExistingClient(null);
+              setForm({
+                ...form,
+                nome_cliente: extracted.nome_cliente || "",
+                cpf_cnpj: extracted.cpf_cnpj || "",
+                email: extracted.email || "",
+                telefone: extracted.telefone || "",
+                endereco: extracted.endereco || "",
+                birth_date: extracted.birth_date || "",
+              });
             }}
             className={`flex-1 py-3 px-4 rounded-lg border text-center transition font-semibold text-sm flex items-center justify-center gap-2 ${
               !existingClient
@@ -3120,6 +3146,15 @@ function Step3Review({
                   address: first.address ?? null,
                   birth_date: first.birth_date ?? null,
                   policiesCount: count ?? 0,
+                });
+                setForm({
+                  ...form,
+                  nome_cliente: first.name,
+                  cpf_cnpj: first.cpf || form.cpf_cnpj || "",
+                  email: first.email,
+                  telefone: first.phone || form.telefone || "",
+                  endereco: first.address || form.endereco || "",
+                  birth_date: first.birth_date || form.birth_date || "",
                 });
               }
             }}
@@ -3169,6 +3204,15 @@ function Step3Review({
                     address: c.address ?? null,
                     birth_date: c.birth_date ?? null,
                     policiesCount: count ?? 0,
+                  });
+                  setForm({
+                    ...form,
+                    nome_cliente: c.name,
+                    cpf_cnpj: c.cpf || form.cpf_cnpj || "",
+                    email: c.email,
+                    telefone: c.phone || form.telefone || "",
+                    endereco: c.address || form.endereco || "",
+                    birth_date: c.birth_date || form.birth_date || "",
                   });
                 }}
               />
