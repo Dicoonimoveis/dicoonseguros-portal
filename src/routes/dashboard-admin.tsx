@@ -13,6 +13,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { inviteClient } from "@/lib/admin-users.functions";
 // @ts-ignore
 import * as XLSX from "@e965/xlsx";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/dashboard-admin")({
   beforeLoad: async () => {
@@ -62,6 +63,8 @@ type PolicyDoc = {
   file_name: string; doc_type: string;
 };
 
+type AdminNotification = { id: string; title: string; desc: string; time: string; read: boolean };
+
 function AdminDashboard() {
   const navigate = useNavigate();
   const [active, setActive] = useState<NavKey>("dashboard");
@@ -72,6 +75,8 @@ function AdminDashboard() {
   const [policyDocs, setPolicyDocs] = useState<PolicyDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [notifications, setNotifications] = useState<AdminNotification[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -95,12 +100,41 @@ function AdminDashboard() {
     }
   }, []);
 
+  // Initialize notification list with recent profiles on mount or when profiles change
+  useEffect(() => {
+    if (profiles.length > 0) {
+      const recent = profiles
+        .filter((p) => {
+          const daysOld = (Date.now() - new Date(p.created_at).getTime()) / 86400000;
+          return daysOld <= 7;
+        })
+        .slice(0, 8)
+        .map((p): AdminNotification => ({
+          id: p.user_id,
+          title: "Novo Cliente Cadastrado",
+          desc: `${p.name} (${p.email})`,
+          time: new Date(p.created_at).toLocaleDateString("pt-BR") + " " + new Date(p.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+          read: true,
+        }));
+      setNotifications((prev) => {
+        const existingIds = new Set(prev.map((n) => n.id));
+        const merged = [...prev];
+        recent.forEach((n) => {
+          if (!existingIds.has(n.id)) {
+            merged.push(n);
+          }
+        });
+        return merged.sort((a, b) => b.time.localeCompare(a.time));
+      });
+    }
+  }, [profiles]);
+
   useEffect(() => {
     reload();
 
     const channel = supabase
       .channel("admin-realtime")
-      .on("postgres_changes", { event: "*", schema: "public" }, () => {
+      .on("postgres_changes", { event: "*", schema: "public" }, (payload) => {
         void (async () => {
           try {
             const [pRes, polRes, cRes, cdRes, pdRes] = await Promise.all([
@@ -115,6 +149,53 @@ function AdminDashboard() {
             setClaims((cRes.data ?? []) as Claim[]);
             setClientDocs((cdRes.data ?? []) as ClientDoc[]);
             setPolicyDocs((pdRes.data ?? []) as PolicyDoc[]);
+
+            if (payload.eventType === "INSERT" && payload.table === "profiles") {
+              const newProfile = payload.new as Profile;
+              
+              // Append a new notification
+              const newNotif: AdminNotification = {
+                id: newProfile.user_id + "-" + Date.now(),
+                title: "✨ Novo Cliente Cadastrado",
+                desc: `${newProfile.name} (${newProfile.email}) se cadastrou no portal!`,
+                time: new Date().toLocaleDateString("pt-BR") + " " + new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+                read: false,
+              };
+              setNotifications((prev) => [newNotif, ...prev]);
+
+              toast.success(`✨ Novo cadastro de cliente!`, {
+                description: `${newProfile.name} (${newProfile.email}) acabou de se cadastrar no portal!`,
+                duration: 10000,
+              });
+
+              // Play a gentle notification sound using Web Audio API
+              try {
+                const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                oscillator.type = "sine";
+                oscillator.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 0.15);
+                
+                setTimeout(() => {
+                  const osc2 = audioCtx.createOscillator();
+                  const gain2 = audioCtx.createGain();
+                  osc2.connect(gain2);
+                  gain2.connect(audioCtx.destination);
+                  osc2.type = "sine";
+                  osc2.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+                  gain2.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                  osc2.start();
+                  osc2.stop(audioCtx.currentTime + 0.25);
+                }, 120);
+              } catch (e) {
+                console.log("Audio feedback not supported or blocked by browser policies.");
+              }
+            }
           } catch (err) {
             console.error("Erro na sincronização em tempo real:", err);
           }
@@ -157,6 +238,71 @@ function AdminDashboard() {
           <span className="text-base sm:text-lg font-bold" style={{ color: PRIMARY }}>Dicoon Seguros</span>
         </div>
         <div className="flex items-center gap-2 sm:gap-4">
+          {/* Notification Bell */}
+          <div className="relative">
+            <button
+              onClick={() => setShowNotifications(!showNotifications)}
+              className="p-2 rounded-full hover:bg-gray-100 transition relative text-gray-600 hover:text-gray-900 focus:outline-none"
+              aria-label="Notificações"
+            >
+              <Bell className="w-5 h-5" />
+              {notifications.some((n) => !n.read) && (
+                <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse border-2 border-white" />
+              )}
+            </button>
+
+            {/* Notification Dropdown */}
+            {showNotifications && (
+              <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl border border-gray-200 shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+                  <span className="text-xs font-bold text-gray-900">Notificações Recentes</span>
+                  {notifications.some((n) => !n.read) && (
+                    <button
+                      onClick={() => setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))}
+                      className="text-[10px] font-semibold text-emerald-600 hover:underline"
+                    >
+                      Marcar todas como lidas
+                    </button>
+                  )}
+                </div>
+                <div className="max-h-64 overflow-y-auto divide-y divide-gray-50">
+                  {notifications.length === 0 ? (
+                    <div className="p-6 text-center text-xs text-gray-400">Nenhuma notificação recente.</div>
+                  ) : (
+                    notifications.map((n) => (
+                      <div
+                        key={n.id}
+                        className={`p-3 transition hover:bg-gray-50 flex flex-col gap-0.5 ${
+                          !n.read ? "bg-emerald-50/20" : ""
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-gray-900 flex items-center gap-1">
+                            {!n.read && <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" />}
+                            {n.title}
+                          </span>
+                          <span className="text-[9px] text-gray-400">{n.time}</span>
+                        </div>
+                        <span className="text-[11px] text-gray-600 leading-normal">{n.desc}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <div className="px-4 py-2 border-t border-gray-100 text-center bg-gray-50">
+                  <button
+                    onClick={() => {
+                      setActive("configuracoes");
+                      setShowNotifications(false);
+                    }}
+                    className="text-[10px] font-semibold text-gray-500 hover:text-gray-900"
+                  >
+                    Ver Controle de Acessos
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           <span className="px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-semibold"
             style={{ backgroundColor: `${ADMIN_PURPLE}15`, color: ADMIN_PURPLE }}>Administrador</span>
           <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-white text-xs sm:text-sm font-semibold"
