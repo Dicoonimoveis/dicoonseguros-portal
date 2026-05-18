@@ -1,23 +1,27 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 
-const EXTRACTION_PROMPT = `Você é um extrator de dados de apólices de seguro brasileiras. Leia o documento e retorne APENAS um JSON válido (sem markdown, sem texto adicional) com os seguintes campos. Use null para campos não encontrados.
+const EXTRACTION_PROMPT = `Você é um extrator especialista em apólices de seguro brasileiras. 
+Analise a apólice fornecida (PDF ou Imagem) e extraia todas as informações solicitadas.
+Você DEVE retornar obrigatoriamente um objeto JSON válido. Não adicione nenhuma explicação nem formatação markdown. Retorne apenas o JSON.
+Se um campo não for encontrado ou não estiver no documento, preencha o valor como null.
 
+Estrutura do JSON:
 {
-  "nome_cliente": string | null,
-  "cpf_cnpj": string | null,
-  "email": string | null,
-  "telefone": string | null,
-  "endereco": string | null,
-  "numero_apolice": string | null,
-  "seguradora": string | null,
-  "tipo_seguro": string | null,
-  "bem_segurado": string | null,
-  "data_inicio": string | null,  // formato YYYY-MM-DD
-  "data_vencimento": string | null,  // formato YYYY-MM-DD
-  "premio_valor": string | null,  // apenas números, ex "1234.56"
-  "frequencia_pagamento": string | null,  // "mensal" | "anual" | "semestral"
-  "coberturas": string[] | null
+  "nome_cliente": "Nome completo do segurado ou cliente",
+  "cpf_cnpj": "CPF ou CNPJ do cliente (apenas números)",
+  "email": "E-mail de contato do cliente",
+  "telefone": "WhatsApp ou telefone com DDD (apenas números)",
+  "endereco": "Endereço completo do cliente",
+  "numero_apolice": "Número identificador da apólice",
+  "seguradora": "Nome da companhia seguradora (ex: Porto Seguro, Azul, Tokio Marine, Allianz, Bradesco, etc.)",
+  "tipo_seguro": "Tipo de seguro (ex: Automóvel, Residencial, Vida, Saúde, Empresarial, etc.)",
+  "bem_segurado": "Descrição do bem segurado (ex: placa do carro, chassi, modelo ou endereço do imóvel)",
+  "data_inicio": "Data de início da vigência no formato YYYY-MM-DD",
+  "data_vencimento": "Data de término da vigência no formato YYYY-MM-DD",
+  "premio_valor": "Valor do prêmio/preço total do seguro (apenas número ou decimal, ex: 1530.45)",
+  "frequencia_pagamento": "Frequência de pagamento: \"mensal\", \"anual\", \"semestral\" ou null",
+  "coberturas": ["Lista de coberturas principais descritas no documento"]
 }`;
 
 export const Route = createFileRoute("/api/extract-policy")({
@@ -55,6 +59,7 @@ export const Route = createFileRoute("/api/extract-policy")({
           }
 
           // Call Lovable AI Gateway with vision/PDF
+          console.log(`Sending document to AI extraction using google/gemini-1.5-flash (type: ${body.mimeType})`);
           const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
             method: "POST",
             headers: {
@@ -62,7 +67,8 @@ export const Route = createFileRoute("/api/extract-policy")({
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              model: "google/gemini-2.5-pro",
+              model: "google/gemini-1.5-flash",
+              response_format: { type: "json_object" },
               messages: [
                 {
                   role: "user",
@@ -104,6 +110,7 @@ export const Route = createFileRoute("/api/extract-policy")({
             }
           }
 
+          console.log("Extracted policy data successfully:", JSON.stringify(extracted));
           return Response.json({ extracted });
         } catch (err) {
           return new Response(
