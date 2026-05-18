@@ -125,6 +125,9 @@ function ClientDashboard() {
   const [active, setActive] = useState<NavKey>("apolices");
   const [profile, setProfile] = useState<Profile | null>(null);
   const [policies, setPolicies] = useState<Policy[]>([]);
+  const [claims, setClaims] = useState<Claim[]>([]);
+  const [clientDocs, setClientDocs] = useState<ClientDoc[]>([]);
+  const [policyDocs, setPolicyDocs] = useState<PolicyDoc[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -143,13 +146,24 @@ function ClientDashboard() {
   const loadCore = useCallback(async () => {
     if (!userId) return;
     setLoading(true);
-    const [profRes, polRes] = await Promise.all([
-      supabase.from("profiles").select("*").eq("user_id", userId).maybeSingle(),
-      supabase.from("policies").select("*").eq("user_id", userId).order("end_date"),
-    ]);
-    if (profRes.data) setProfile(profRes.data as Profile);
-    if (polRes.data) setPolicies(polRes.data as Policy[]);
-    setLoading(false);
+    try {
+      const [profRes, polRes, claimsRes, docsRes, pdocsRes] = await Promise.all([
+        supabase.from("profiles").select("*").eq("user_id", userId).maybeSingle(),
+        supabase.from("policies").select("*").eq("user_id", userId).order("end_date"),
+        supabase.from("claims").select("*").eq("user_id", userId).order("event_date", { ascending: false }),
+        supabase.from("client_documents").select("*").eq("user_id", userId).order("created_at", { ascending: false }),
+        supabase.from("policy_documents").select("*, policy:policies(*)").eq("user_id", userId).order("created_at", { ascending: false }),
+      ]);
+      if (profRes.data) setProfile(profRes.data as Profile);
+      if (polRes.data) setPolicies(polRes.data as Policy[]);
+      setClaims((claimsRes.data as Claim[]) ?? []);
+      setClientDocs((docsRes.data as ClientDoc[]) ?? []);
+      setPolicyDocs((pdocsRes.data as PolicyDoc[]) ?? []);
+    } catch (err) {
+      console.error("Erro ao carregar dados do cliente em tempo real:", err);
+    } finally {
+      setLoading(false);
+    }
   }, [userId]);
 
   useEffect(() => {
@@ -157,18 +171,34 @@ function ClientDashboard() {
 
     if (!userId) return;
 
+    // Supabase Realtime - Listen explicitly on all tables for any admin/client updates
     const channel = supabase
       .channel(`client-realtime-${userId}`)
-      .on("postgres_changes", { event: "*", schema: "public" }, () => {
-        void (async () => {
-          const [profRes, polRes] = await Promise.all([
-            supabase.from("profiles").select("*").eq("user_id", userId).maybeSingle(),
-            supabase.from("policies").select("*").eq("user_id", userId).order("end_date"),
-          ]);
-          if (profRes.data) setProfile(profRes.data as Profile);
-          if (polRes.data) setPolicies(polRes.data as Policy[]);
-        })();
-      })
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "profiles", filter: `user_id=eq.${userId}` },
+        () => { void loadCore(); }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "policies", filter: `user_id=eq.${userId}` },
+        () => { void loadCore(); }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "claims", filter: `user_id=eq.${userId}` },
+        () => { void loadCore(); }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "client_documents", filter: `user_id=eq.${userId}` },
+        () => { void loadCore(); }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "policy_documents", filter: `user_id=eq.${userId}` },
+        () => { void loadCore(); }
+      )
       .subscribe();
 
     return () => {
@@ -246,9 +276,9 @@ function ClientDashboard() {
           ) : (
             <>
               {active === "apolices" && <PoliciesView policies={policies} userId={userId!} />}
-              {active === "sinistros" && <ClaimsView userId={userId!} />}
-              {active === "documentos" && <DocumentsView userId={userId!} />}
-              {active === "pdfs" && <PdfsView userId={userId!} />}
+              {active === "sinistros" && <ClaimsView userId={userId!} claims={claims} loading={false} />}
+              {active === "documentos" && <DocumentsView userId={userId!} docs={clientDocs} loading={false} onReload={loadCore} />}
+              {active === "pdfs" && <PdfsView userId={userId!} docs={policyDocs} loading={false} />}
               {active === "corretor" && <BrokerView policies={policies} />}
               {active === "perfil" && <ProfileView profile={profile} initials={initials} onProfileChange={loadCore} />}
             </>
@@ -427,13 +457,23 @@ function PolicyCard({ policy, userId: _userId }: { policy: Policy; userId: strin
 }
 
 /* ============== CLAIMS VIEW ============== */
-function ClaimsView({ userId }: { userId: string }) {
-  const [claims, setClaims] = useState<Claim[]>([]);
-  const [loading, setLoading] = useState(true);
+function ClaimsView({ userId, claims: initialClaims, loading: parentLoading }: { userId: string; claims?: Claim[]; loading?: boolean }) {
+  const [claims, setClaims] = useState<Claim[]>(initialClaims ?? []);
+  const [loading, setLoading] = useState(parentLoading ?? true);
+
   useEffect(() => {
-    void supabase.from("claims").select("*").eq("user_id", userId).order("event_date", { ascending: false })
-      .then(({ data }) => { setClaims((data as Claim[]) ?? []); setLoading(false); });
-  }, [userId]);
+    if (initialClaims) {
+      setClaims(initialClaims);
+      setLoading(parentLoading ?? false);
+    }
+  }, [initialClaims, parentLoading]);
+
+  useEffect(() => {
+    if (!initialClaims) {
+      void supabase.from("claims").select("*").eq("user_id", userId).order("event_date", { ascending: false })
+        .then(({ data }) => { setClaims((data as Claim[]) ?? []); setLoading(false); });
+    }
+  }, [userId, initialClaims]);
 
   const statusBadge = (s: string) => {
     const map: Record<string, { t: string; bg: string; c: string }> = {
@@ -491,9 +531,9 @@ function ClaimsView({ userId }: { userId: string }) {
 const DOC_TYPES = ["CNH", "RG", "Comprovante de endereço", "Comprovante de renda", "Certidão", "Outro"];
 const MAX_SIZE = 10 * 1024 * 1024;
 
-function DocumentsView({ userId }: { userId: string }) {
-  const [docs, setDocs] = useState<ClientDoc[]>([]);
-  const [loading, setLoading] = useState(true);
+function DocumentsView({ userId, docs: initialDocs, loading: parentLoading, onReload }: { userId: string; docs?: ClientDoc[]; loading?: boolean; onReload?: () => void }) {
+  const [docs, setDocs] = useState<ClientDoc[]>(initialDocs ?? []);
+  const [loading, setLoading] = useState(parentLoading ?? true);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [docType, setDocType] = useState<string>("CNH");
   const [docTypeOther, setDocTypeOther] = useState("");
@@ -501,13 +541,28 @@ function DocumentsView({ userId }: { userId: string }) {
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    if (initialDocs) {
+      setDocs(initialDocs);
+      setLoading(parentLoading ?? false);
+    }
+  }, [initialDocs, parentLoading]);
+
   const load = useCallback(async () => {
+    if (onReload) {
+      onReload();
+      return;
+    }
     const { data } = await supabase.from("client_documents").select("*").eq("user_id", userId).order("created_at", { ascending: false });
     setDocs((data as ClientDoc[]) ?? []);
     setLoading(false);
-  }, [userId]);
+  }, [userId, onReload]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    if (!initialDocs) {
+      void load();
+    }
+  }, [userId, initialDocs, load]);
 
   const handleFile = (file: File) => {
     if (!["application/pdf", "image/jpeg", "image/jpg", "image/png"].includes(file.type)) {
@@ -640,18 +695,27 @@ function DocumentsView({ userId }: { userId: string }) {
 }
 
 /* ============== PDFs VIEW ============== */
-function PdfsView({ userId }: { userId: string }) {
-  const [docs, setDocs] = useState<PolicyDoc[]>([]);
-  const [loading, setLoading] = useState(true);
+function PdfsView({ userId, docs: initialDocs, loading: parentLoading }: { userId: string; docs?: PolicyDoc[]; loading?: boolean }) {
+  const [docs, setDocs] = useState<PolicyDoc[]>(initialDocs ?? []);
+  const [loading, setLoading] = useState(parentLoading ?? true);
 
   useEffect(() => {
-    void supabase
-      .from("policy_documents")
-      .select("*, policy:policies(*)")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .then(({ data }) => { setDocs((data as PolicyDoc[]) ?? []); setLoading(false); });
-  }, [userId]);
+    if (initialDocs) {
+      setDocs(initialDocs);
+      setLoading(parentLoading ?? false);
+    }
+  }, [initialDocs, parentLoading]);
+
+  useEffect(() => {
+    if (!initialDocs) {
+      void supabase
+        .from("policy_documents")
+        .select("*, policy:policies(*)")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .then(({ data }) => { setDocs((data as PolicyDoc[]) ?? []); setLoading(false); });
+    }
+  }, [userId, initialDocs]);
 
   const typeBadge = (t: string) => {
     if (t === "apolice") return { t: "Apólice", bg: "#DBEAFE", c: "#1D4ED8" };
