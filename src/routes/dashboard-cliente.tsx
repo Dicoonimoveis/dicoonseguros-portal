@@ -22,6 +22,7 @@ import {
   Upload,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { differenceInDays, parseISO, startOfDay } from "date-fns";
 import { signOut, getCurrentUser, refreshSessionState, onSessionChange, logClientAccess } from "@/lib/auth";
 
 export const Route = createFileRoute("/dashboard-cliente")({
@@ -104,10 +105,7 @@ type Profile = {
 };
 
 function daysUntil(dateStr: string): number {
-  const end = new Date(dateStr + "T00:00:00");
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  return Math.round((end.getTime() - now.getTime()) / 86400000);
+  return differenceInDays(parseISO(dateStr), startOfDay(new Date()));
 }
 
 function formatDate(d: string | null): string {
@@ -389,20 +387,25 @@ function PoliciesView({ policies, userId }: { policies: Policy[]; userId: string
 function PolicyCard({ policy, userId: _userId }: { policy: Policy; userId: string }) {
   const days = daysUntil(policy.end_date);
   const isExpired = days < 0;
-  const isUrgent = !isExpired && days <= 7;
-  const isWarn = !isExpired && days > 7 && days <= 30;
 
-  const barColor = isExpired ? "#9CA3AF" : isUrgent ? "#E24B4A" : isWarn ? "#EF9F27" : PRIMARY;
-  const totalDays = Math.max(1, Math.round((new Date(policy.end_date).getTime() - new Date(policy.start_date).getTime()) / 86400000));
+  // Status visual coloring:
+  // 🟢 Verde: mais de 60 dias para vencer
+  // 🟡 Amarelo: entre 30 e 60 dias
+  // 🔴 Vermelho: menos de 30 dias ou vencida
+  const isGreen = days > 60;
+  const isYellow = days >= 30 && days <= 60;
+  const isRed = days < 30;
+
+  const statusColor = isGreen ? "#16A34A" : isYellow ? "#D97706" : "#DC2626";
+  const statusBg = isGreen ? "#F0FDF4" : isYellow ? "#FFFBEB" : "#FEF2F2";
+  const barColor = isGreen ? PRIMARY : isYellow ? "#D97706" : "#DC2626";
+
+  const totalDays = Math.max(1, differenceInDays(parseISO(policy.end_date), parseISO(policy.start_date)));
   const elapsed = Math.max(0, Math.min(100, ((totalDays - Math.max(0, days)) / totalDays) * 100));
 
-  const badge = isExpired
-    ? { text: "Vencida", bg: "#F3F4F6", color: "#4B5563" }
-    : isUrgent
-      ? { text: `Vence em ${days} dia(s)`, bg: "#FEE2E2", color: "#B91C1C" }
-      : isWarn
-        ? { text: `Vence em ${days} dias`, bg: "#FEF3C7", color: "#B45309" }
-        : { text: "Ativa", bg: "#D1FAE5", color: "#047857" };
+  const badgeText = days < 0
+    ? `Vencida há ${Math.abs(days)} dia(s)`
+    : `Vence em ${days} dia(s)`;
 
   const handleDownload = async () => {
     const { data: docs } = await supabase
@@ -435,8 +438,9 @@ function PolicyCard({ policy, userId: _userId }: { policy: Policy; userId: strin
             {policy.premium && <> · Prêmio: {policy.premium}</>}
           </p>
         </div>
-        <span className="shrink-0 px-2.5 py-1 rounded-full text-[11px] font-semibold" style={{ backgroundColor: badge.bg, color: badge.color }}>
-          {badge.text}
+        <span className="shrink-0 px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1.5" style={{ backgroundColor: statusBg, color: statusColor }}>
+          <span className="text-[10px]">{isGreen ? "🟢" : isYellow ? "🟡" : "🔴"}</span>
+          {badgeText}
         </span>
       </div>
 
@@ -459,7 +463,7 @@ function PolicyCard({ policy, userId: _userId }: { policy: Policy; userId: strin
         <button onClick={handleDownload} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium hover:bg-gray-50 transition" style={{ border: `1px solid ${PRIMARY}`, color: PRIMARY }}>
           <Download className="w-3.5 h-3.5" /> Baixar PDF
         </button>
-        {(isUrgent || isWarn) && <WaButton className="ml-auto">Renovar via WhatsApp</WaButton>}
+        {(isRed || isYellow) && <WaButton className="ml-auto">Renovar via WhatsApp</WaButton>}
       </div>
     </div>
   );

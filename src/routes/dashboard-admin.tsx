@@ -14,6 +14,7 @@ import { inviteClient } from "@/lib/admin-users.functions";
 // @ts-ignore
 import * as XLSX from "@e965/xlsx";
 import { toast } from "sonner";
+import { differenceInDays, parseISO, startOfDay } from "date-fns";
 
 export const Route = createFileRoute("/dashboard-admin")({
   beforeLoad: async () => {
@@ -210,14 +211,16 @@ function AdminDashboard() {
 
   const handleLogout = async () => { await signOut(); navigate({ to: "/login" }); };
 
-  const today = useMemo(() => new Date(), []);
   const policiesWithDays = useMemo(
-    () => policies.map((p) => ({
-      ...p,
-      daysToExpiry: Math.ceil((new Date(p.end_date).getTime() - today.getTime()) / 86400000),
-      client: profiles.find((pr) => pr.user_id === p.user_id),
-    })),
-    [policies, profiles, today]
+    () => policies.map((p) => {
+      const days = differenceInDays(parseISO(p.end_date), startOfDay(new Date()));
+      return {
+        ...p,
+        daysToExpiry: days,
+        client: profiles.find((pr) => pr.user_id === p.user_id),
+      };
+    }),
+    [policies, profiles]
   );
   const urgent = policiesWithDays.filter((p) => p.daysToExpiry >= 0 && p.daysToExpiry <= 7);
   const soon = policiesWithDays.filter((p) => p.daysToExpiry > 7 && p.daysToExpiry <= 30);
@@ -616,7 +619,27 @@ function ExpiryTable({
                 <td className="px-4 py-3 text-gray-600">{r.policy_number}</td>
                 <td className="px-4 py-3 text-gray-600">{r.policy_type}</td>
                 <td className="px-4 py-3 text-gray-600">{new Date(r.end_date).toLocaleDateString("pt-BR")}</td>
-                <td className="px-4 py-3"><span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold" style={badgeStyle}>{r.daysToExpiry} dias</span></td>
+                <td className="px-4 py-3">
+                  {(() => {
+                    const days = r.daysToExpiry;
+                    const isGreen = days > 60;
+                    const isYellow = days >= 30 && days <= 60;
+                    const isRed = days < 30;
+
+                    const statusColor = isGreen ? "#16A34A" : isYellow ? "#D97706" : "#DC2626";
+                    const statusBg = isGreen ? "#F0FDF4" : isYellow ? "#FFFBEB" : "#FEF2F2";
+                    const badgeText = days < 0
+                      ? `Vencida há ${Math.abs(days)} dia(s)`
+                      : `Vence em ${days} dia(s)`;
+
+                    return (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold" style={{ backgroundColor: statusBg, color: statusColor }}>
+                        <span className="text-[10px]">{isGreen ? "🟢" : isYellow ? "🟡" : "🔴"}</span>
+                        {badgeText}
+                      </span>
+                    );
+                  })()}
+                </td>
                 <td className="px-4 py-3 text-right">
                   <a href={WA_LINK} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-semibold text-white" style={{ backgroundColor: WHATSAPP }}>
                     <MessageCircle className="w-3 h-3" /> WhatsApp
@@ -1079,7 +1102,27 @@ function ApolicesView({
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3"><span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">{p.status}</span></td>
+                    <td className="px-4 py-3">
+                      {(() => {
+                        const days = p.daysToExpiry;
+                        const isGreen = days > 60;
+                        const isYellow = days >= 30 && days <= 60;
+                        const isRed = days < 30;
+
+                        const statusColor = isGreen ? "#16A34A" : isYellow ? "#D97706" : "#DC2626";
+                        const statusBg = isGreen ? "#F0FDF4" : isYellow ? "#FFFBEB" : "#FEF2F2";
+                        const badgeText = days < 0
+                          ? `Vencida há ${Math.abs(days)} dia(s)`
+                          : `Vence em ${days} dia(s)`;
+
+                        return (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap" style={{ backgroundColor: statusBg, color: statusColor }}>
+                            <span className="text-[10px]">{isGreen ? "🟢" : isYellow ? "🟡" : "🔴"}</span>
+                            {badgeText}
+                          </span>
+                        );
+                      })()}
+                    </td>
                     <td className="px-4 py-3 text-right">
                       <div className="inline-flex gap-2">
                         <button
