@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { createClient } from "@supabase/supabase-js";
 import pdfParse from "pdf-parse";
 
 const EXTRACTION_PROMPT = `Você é um extrator especialista em apólices de seguro brasileiras. 
