@@ -62,8 +62,8 @@ export const Route = createFileRoute("/api/extract-policy")({
 
           // 1. Decodificar texto bruto do base64 para o scanner Regex de alta fidelidade
           const regexMatches: Record<string, any> = {};
+          let rawText = "";
           try {
-            let rawText = "";
             if (body.mimeType === "application/pdf") {
               const buffer = Buffer.from(body.fileBase64, "base64");
               try {
@@ -97,6 +97,28 @@ export const Route = createFileRoute("/api/extract-policy")({
             const telMatch = rawText.match(/\(?\d{2}\)?\s?9?\d{4}-?\d{4}/);
             if (telMatch) regexMatches.telefone = telMatch[0].replace(/\D/g, "");
 
+            // Nome do Cliente / Segurado
+            const nomeMatch = rawText.match(/(?:segurado|nome do segurado|proponente|cliente|segurada)\s*:\s*([A-ZÀ-Úa-zà-ú\s]{3,60})/i) ||
+                             rawText.match(/(?:segurado|proponente|cliente|segurada)\s+([A-ZÀ-Úa-zà-ú\s.]{3,60})/i);
+            if (nomeMatch) regexMatches.nome_cliente = nomeMatch[1].trim();
+
+            // Número da Apólice
+            const apoliceMatch = rawText.match(/(?:apólice|apolice|nº apólice|contrato|proposta)\s*(?:nº|no|num|number)?\s*:\s*([a-zA-Z0-9.\-/]{4,25})/i) ||
+                                 rawText.match(/(?:apólice|apolice)\s+([a-zA-Z0-9.\-/]{5,25})/i);
+            if (apoliceMatch) regexMatches.numero_apolice = apoliceMatch[1].trim();
+
+            // Endereço do Cliente
+            const enderecoMatch = rawText.match(/(?:endereço|endereco|logradouro|residência|residencia)\s*:\s*([A-Za-z0-9À-ÿ\s,.\-ºª/]{10,100})/i);
+            if (enderecoMatch) regexMatches.endereco = enderecoMatch[1].trim();
+
+            // Data de Nascimento
+            const birthMatch = rawText.match(/(?:nascimento|data de nascimento|data nasc|d\.nasc)\s*:\s*(\d{2}\/\d{2}\/\d{4})/i) ||
+                               rawText.match(/(\d{2}\/\d{2}\/\d{4})\s*(?:nascimento|data de nascimento)/i);
+            if (birthMatch) {
+              const parts = birthMatch[1].split("/");
+              regexMatches.birth_date = `${parts[2]}-${parts[1]}-${parts[0]}`;
+            }
+
             // Seguradora
             const insurers = ["Porto Seguro", "Azul", "Tokio Marine", "Allianz", "Bradesco", "Mapfre", "Sompo", "Liberty", "HDI", "Zurich", "Suhai"];
             for (const ins of insurers) {
@@ -120,6 +142,52 @@ export const Route = createFileRoute("/api/extract-policy")({
               regexMatches.data_vencimento = formatD(dates[1]);
               regexMatches.data_renovacao = formatD(dates[1]);
             }
+
+            // Valor do Prêmio
+            const premioMatch = rawText.match(/(?:prêmio total|premio total|prêmio líquido|premio liquido|valor total|valor do prêmio|valor do premio)\s*(?:r\$)?\s*:\s*([0-9.,]+)/i) ||
+                                rawText.match(/(?:prêmio|premio|total)\s+r\$\s*([0-9.,]+)/i);
+            if (premioMatch) {
+              const cleanVal = premioMatch[1].replace(/\./g, "").replace(",", ".");
+              regexMatches.premio_valor = cleanVal;
+            }
+
+            // Frequência de Pagamento
+            if (/mensal/i.test(rawText)) regexMatches.frequencia_pagamento = "mensal";
+            else if (/anual/i.test(rawText)) regexMatches.frequencia_pagamento = "anual";
+            else if (/semestral/i.test(rawText)) regexMatches.frequencia_pagamento = "semestral";
+
+            // Bem Segurado (Placa, Chassi, Modelo)
+            const placaMatch = rawText.match(/\b[A-Z]{3}-?\d[A-Z0-9]\d{2}\b/i);
+            const chassiMatch = rawText.match(/\b[A-HJ-NPR-Z0-9]{17}\b/i);
+            const modeloMatch = rawText.match(/(?:veículo|veiculo|marca\/modelo|modelo|bem segurado|objeto)\s*:\s*([A-Za-z0-9\s/\-]{3,40})/i);
+            
+            const bemParts = [];
+            if (modeloMatch) bemParts.push(modeloMatch[1].trim());
+            if (placaMatch) bemParts.push(`Placa: ${placaMatch[0].toUpperCase()}`);
+            if (chassiMatch) bemParts.push(`Chassi: ${chassiMatch[0].toUpperCase()}`);
+            if (bemParts.length > 0) {
+              regexMatches.bem_segurado = bemParts.join(" | ");
+            }
+
+            // Coberturas
+            const coberturasMatch = [...rawText.matchAll(/(?:cobertura|coberturas|garantia|garantias)\s*:\s*([A-Za-zÀ-ÿ\s,;\-]{10,150})/gi)];
+            if (coberturasMatch.length > 0) {
+              regexMatches.coberturas = coberturasMatch.map(m => m[1].trim().split(/[,;]/).map(s => s.trim())).flat().filter(Boolean);
+            } else {
+              const commonCoverages = [
+                "Colisão", "Incêndio", "Roubo", "Furto", "Danos a Terceiros", "Danos Morais",
+                "Assistência 24h", "Vidros", "Carro Reserva", "RCF-V", "Morte", "Invalidez"
+              ];
+              const foundCoverages = [];
+              for (const cov of commonCoverages) {
+                if (new RegExp(cov, "i").test(rawText)) {
+                  foundCoverages.push(cov);
+                }
+              }
+              if (foundCoverages.length > 0) {
+                regexMatches.coberturas = foundCoverages;
+              }
+            }
           } catch (e) {
             console.error("Erro na leitura rápida do texto:", e);
           }
@@ -128,6 +196,27 @@ export const Route = createFileRoute("/api/extract-policy")({
           let aiExtracted: Record<string, any> = {};
           try {
             console.log(`Sending document to AI extraction using google/gemini-1.5-flash (type: ${body.mimeType})`);
+            const isPdf = body.mimeType === "application/pdf";
+            const messages: any[] = [];
+
+            if (isPdf) {
+              messages.push({
+                role: "user",
+                content: `${EXTRACTION_PROMPT}\n\nAqui está o texto extraído do PDF da apólice de seguro:\n\n${rawText}`
+              });
+            } else {
+              messages.push({
+                role: "user",
+                content: [
+                  { type: "text", text: EXTRACTION_PROMPT },
+                  {
+                    type: "image_url",
+                    image_url: { url: `data:${body.mimeType};base64,${body.fileBase64}` },
+                  },
+                ],
+              });
+            }
+
             const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
               method: "POST",
               headers: {
@@ -137,18 +226,7 @@ export const Route = createFileRoute("/api/extract-policy")({
               body: JSON.stringify({
                 model: "google/gemini-1.5-flash",
                 response_format: { type: "json_object" },
-                messages: [
-                  {
-                    role: "user",
-                    content: [
-                      { type: "text", text: EXTRACTION_PROMPT },
-                      {
-                        type: "image_url",
-                        image_url: { url: `data:${body.mimeType};base64,${body.fileBase64}` },
-                      },
-                    ],
-                  },
-                ],
+                messages: messages,
               }),
             });
 

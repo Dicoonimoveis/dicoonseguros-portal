@@ -2552,11 +2552,21 @@ function ImportarApoliceView({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  // Sync client identity fields into the form when an existing client is linked.
-  // Policy fields (apolice number, dates, etc.) are already set by setForm(ext) directly
-  // after extraction — do NOT overwrite them here to avoid stale-closure bugs.
+  // Sync client identity fields into the form when an existing client is linked,
+  // or restore AI extracted data if the user chooses to create a new registration.
   useEffect(() => {
-    if (!existingClient) return;
+    if (!existingClient) {
+      setForm((prev) => ({
+        ...prev,
+        nome_cliente: extracted.nome_cliente || prev.nome_cliente || "",
+        cpf_cnpj: extracted.cpf_cnpj || prev.cpf_cnpj || "",
+        email: extracted.email || prev.email || "",
+        telefone: extracted.telefone || prev.telefone || "",
+        endereco: extracted.endereco || prev.endereco || "",
+        birth_date: extracted.birth_date || prev.birth_date || "",
+      }));
+      return;
+    }
     setForm((prev) => ({
       ...prev,
       nome_cliente: existingClient.name,
@@ -2566,7 +2576,7 @@ function ImportarApoliceView({
       endereco: existingClient.address || prev.endereco || "",
       birth_date: existingClient.birth_date || prev.birth_date || "",
     }));
-  }, [existingClient]); // intentionally excludes 'extracted' — setForm(ext) handles initial fill
+  }, [existingClient, extracted]);
 
 
   useEffect(() => {
