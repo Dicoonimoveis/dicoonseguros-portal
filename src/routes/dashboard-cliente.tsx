@@ -877,16 +877,13 @@ function ProfileView({ profile, initials, onProfileChange }: { profile: Profile 
       const { error } = await supabase
         .from("profiles")
         .update({
-          cpf: cpf.trim() || null,
-          birth_date: birthDate || null,
           phone: phone.trim() || null,
-          address: address.trim() || null,
         })
         .eq("user_id", profile.user_id);
 
       if (error) throw error;
 
-      setMsg({ type: "ok", text: "Dados atualizados com sucesso!" });
+      setMsg({ type: "ok", text: "Dados de contato atualizados com sucesso!" });
       onProfileChange(); // Trigger parent loadCore to sync state
 
       // Clear success message after 3 seconds
@@ -937,28 +934,25 @@ function ProfileView({ profile, initials, onProfileChange }: { profile: Profile 
               />
             </div>
 
-            {/* CPF */}
+            {/* CPF (Leitura) */}
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase tracking-wider">CPF</label>
+              <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">CPF</label>
               <input
                 type="text"
                 value={cpf}
-                onChange={(e) => setCpf(e.target.value)}
-                placeholder="Ex: 000.000.000-00"
-                className="w-full text-sm rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-offset-1 transition"
-                style={{ "--tw-ring-color": PRIMARY } as React.CSSProperties}
+                disabled
+                className="w-full text-sm rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-gray-500 cursor-not-allowed outline-none"
               />
             </div>
 
-            {/* Data de Nascimento */}
+            {/* Data de Nascimento (Leitura) */}
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase tracking-wider">Data de nascimento</label>
+              <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Data de nascimento</label>
               <input
                 type="date"
                 value={birthDate}
-                onChange={(e) => setBirthDate(e.target.value)}
-                className="w-full text-sm rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-offset-1 transition"
-                style={{ "--tw-ring-color": PRIMARY } as React.CSSProperties}
+                disabled
+                className="w-full text-sm rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-gray-500 cursor-not-allowed outline-none"
               />
             </div>
 
@@ -975,18 +969,20 @@ function ProfileView({ profile, initials, onProfileChange }: { profile: Profile 
               />
             </div>
 
-            {/* Endereço */}
+            {/* Endereço (Leitura) */}
             <div className="sm:col-span-2">
-              <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase tracking-wider">Endereço</label>
+              <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Endereço</label>
               <input
                 type="text"
                 value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder="Rua, número, bairro, cidade - UF"
-                className="w-full text-sm rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-offset-1 transition"
-                style={{ "--tw-ring-color": PRIMARY } as React.CSSProperties}
+                disabled
+                className="w-full text-sm rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-gray-500 cursor-not-allowed outline-none"
               />
             </div>
+          </div>
+
+          <div className="text-xs text-gray-500 bg-gray-50 border border-gray-200 p-3.5 rounded-lg leading-relaxed">
+            ℹ️ Por motivos de conformidade legal (LGPD) e segurança contratual das apólices, os dados cadastrais estruturais (Nome, CPF, Data de Nascimento e Endereço) são mantidos diretamente pelo seu corretor de seguros. Caso precise alterá-los ou queira solicitar a exclusão de sua conta, por favor entre em contato com o corretor na aba <strong>Falar com corretor</strong>.
           </div>
 
           {msg && (

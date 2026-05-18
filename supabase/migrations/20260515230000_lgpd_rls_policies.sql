@@ -23,6 +23,7 @@ DROP POLICY IF EXISTS "Admin full access policies" ON public.policies;
 DROP POLICY IF EXISTS "Client read own policy_documents" ON public.policy_documents;
 DROP POLICY IF EXISTS "Admin full access policy_documents" ON public.policy_documents;
 DROP POLICY IF EXISTS "Client read own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Client_Update_Own_Profile" ON public.profiles;
 DROP POLICY IF EXISTS "Admin full access profiles" ON public.profiles;
 DROP POLICY IF EXISTS "Users can read own role" ON public.user_roles;
 DROP POLICY IF EXISTS "Admin write access user_roles" ON public.user_roles;
@@ -68,9 +69,11 @@ CREATE POLICY "Client_Read_Own_Claims" ON public.claims
 CREATE POLICY "Admin_Full_Access_Claims" ON public.claims
   FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
 
--- 7. clientes (profiles): cliente lê próprio; admin total
+-- 7. clientes (profiles): cliente lê próprio, atualiza próprio; admin total
 CREATE POLICY "Client_Read_Own_Profile" ON public.profiles
   FOR SELECT TO authenticated USING (user_id = auth.uid() AND NOT public.is_admin());
+CREATE POLICY "Client_Update_Own_Profile" ON public.profiles
+  FOR UPDATE TO authenticated USING (user_id = auth.uid() AND NOT public.is_admin()) WITH CHECK (user_id = auth.uid() AND NOT public.is_admin());
 CREATE POLICY "Admin_Full_Access_Profiles" ON public.profiles
   FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
 
