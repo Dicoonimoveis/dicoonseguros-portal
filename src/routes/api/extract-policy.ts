@@ -10,6 +10,7 @@ Estrutura do JSON:
 {
   "nome_cliente": "Nome completo do segurado ou cliente",
   "cpf_cnpj": "CPF ou CNPJ do cliente (apenas números)",
+  "birth_date": "Data de nascimento do cliente no formato YYYY-MM-DD ou null",
   "email": "E-mail de contato do cliente",
   "telefone": "WhatsApp ou telefone com DDD (apenas números)",
   "endereco": "Endereço completo do cliente",

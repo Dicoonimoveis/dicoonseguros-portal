@@ -2278,6 +2278,7 @@ type Extracted = {
   email?: string | null;
   telefone?: string | null;
   endereco?: string | null;
+  birth_date?: string | null;
   numero_apolice?: string | null;
   seguradora?: string | null;
   tipo_seguro?: string | null;
@@ -2296,6 +2297,7 @@ type ExistingClient = {
   cpf: string | null;
   phone?: string | null;
   address?: string | null;
+  birth_date?: string | null;
   policiesCount: number;
 };
 
@@ -2344,6 +2346,7 @@ function ImportarApoliceView({
         email: existingClient.email,
         telefone: existingClient.phone || prev.telefone || "",
         endereco: existingClient.address || prev.endereco || "",
+        birth_date: existingClient.birth_date || prev.birth_date || "",
       }));
     } else {
       setForm((prev) => ({
@@ -2353,6 +2356,7 @@ function ImportarApoliceView({
         email: extracted.email || "",
         telefone: extracted.telefone || "",
         endereco: extracted.endereco || "",
+        birth_date: extracted.birth_date || "",
       }));
     }
   }, [existingClient, extracted]);
@@ -2448,6 +2452,7 @@ function ImportarApoliceView({
           cpf: match.cpf,
           phone: match.phone,
           address: match.address ?? null,
+          birth_date: match.birth_date ?? null,
           policiesCount: count ?? 0,
         });
       } else {
@@ -2477,6 +2482,7 @@ function ImportarApoliceView({
           cpf: form.cpf_cnpj || null,
           phone: form.telefone || null,
           address: form.endereco || null,
+          birth_date: form.birth_date || null,
         },
       });
       clientUserId = res.userId;
@@ -2893,6 +2899,7 @@ function Step3Review({
                   cpf: first.cpf,
                   phone: first.phone ?? null,
                   address: first.address ?? null,
+                  birth_date: first.birth_date ?? null,
                   policiesCount: count ?? 0,
                 });
               }
@@ -2941,6 +2948,7 @@ function Step3Review({
                     cpf: c.cpf,
                     phone: c.phone ?? null,
                     address: c.address ?? null,
+                    birth_date: c.birth_date ?? null,
                     policiesCount: count ?? 0,
                   });
                 }}
@@ -2960,6 +2968,7 @@ function Step3Review({
       <Section title="Dados do cliente (Serão criados ou atualizados no banco)">
         <Field label="Nome completo" name="nome_cliente" value={form.nome_cliente ?? ""} onChange={update} ai={aiFields.has("nome_cliente")} />
         <Field label="CPF/CNPJ" name="cpf_cnpj" value={form.cpf_cnpj ?? ""} onChange={update} ai={aiFields.has("cpf_cnpj")} />
+        <Field label="Data de nascimento" name="birth_date" value={form.birth_date ?? ""} onChange={update} ai={aiFields.has("birth_date")} type="date" />
         <Field label="E-mail" name="email" value={form.email ?? ""} onChange={update} ai={aiFields.has("email")} />
         <Field label="Telefone" name="telefone" value={form.telefone ?? ""} onChange={update} ai={aiFields.has("telefone")} />
         <div className="sm:col-span-2">
