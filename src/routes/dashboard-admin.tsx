@@ -3253,7 +3253,9 @@ function Step3Review({
           <select
             value={form.frequencia_pagamento ?? ""}
             onChange={(e) => update("frequencia_pagamento", e.target.value)}
-            className={`w-full px-3 py-2 rounded-md border text-sm ${aiFields.has("frequencia_pagamento") ? "bg-[#F0FFF8] border-[#A8E6CE]" : "border-gray-300"}`}
+            className={`w-full px-3 py-2 rounded-md border text-sm text-gray-950 font-semibold shadow-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 ${
+              aiFields.has("frequencia_pagamento") ? "bg-[#EBFDF5] border-[#86E3CE]" : "border-gray-400 bg-white"
+            }`}
           >
             <option value="">Selecionar</option>
             <option value="mensal">Mensal</option>
@@ -3267,7 +3269,9 @@ function Step3Review({
             value={Array.isArray(form.coberturas) ? form.coberturas.join(", ") : (form.coberturas ?? "")}
             onChange={(e) => setForm({ ...form, coberturas: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
             rows={2}
-            className={`w-full px-3 py-2 rounded-md border text-sm ${aiFields.has("coberturas") ? "bg-[#F0FFF8] border-[#A8E6CE]" : "border-gray-300"}`}
+            className={`w-full px-3 py-2 rounded-md border text-sm text-gray-950 font-semibold shadow-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 ${
+              aiFields.has("coberturas") ? "bg-[#EBFDF5] border-[#86E3CE]" : "border-gray-400 bg-white"
+            }`}
           />
         </div>
       </Section>
@@ -3302,9 +3306,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function FieldLabel({ label, ai }: { label: string; ai: boolean }) {
   return (
     <div className="flex items-center gap-2 mb-1">
-      <label className="text-xs font-medium text-gray-700">{label}</label>
+      <label className="text-xs font-semibold text-gray-900">{label}</label>
       {ai && (
-        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 inline-flex items-center gap-0.5">
+        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 inline-flex items-center gap-0.5">
           <Sparkles className="w-2.5 h-2.5" /> IA
         </span>
       )}
@@ -3329,7 +3333,9 @@ function Field({
         type={type}
         value={value}
         onChange={(e) => onChange(name, e.target.value)}
-        className={`w-full px-3 py-2 rounded-md border text-sm ${ai ? "bg-[#F0FFF8] border-[#A8E6CE]" : "border-gray-300"}`}
+        className={`w-full px-3 py-2 rounded-md border text-sm text-gray-950 font-semibold shadow-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 ${
+          ai ? "bg-[#EBFDF5] border-[#86E3CE]" : "border-gray-400 bg-white"
+        }`}
       />
     </div>
   );
