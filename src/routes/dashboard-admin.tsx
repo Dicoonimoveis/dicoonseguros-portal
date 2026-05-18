@@ -5,7 +5,7 @@ import {
   BarChart3, Settings, LogOut, Bell, Plus, Search, Upload, ScanLine,
   Download, Trash2, MessageCircle, Eye, Pencil, X, FileSpreadsheet,
   Sparkles, TrendingUp, DollarSign, Activity, CheckCircle2, Menu, Mail, Folder,
-  ArrowLeft, Camera, UserCheck, UserPlus, Loader2,
+  ArrowLeft, Camera, UserCheck, UserPlus, Loader2, Clock, UserX,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { signOut } from "@/lib/auth";
@@ -222,6 +222,10 @@ function AdminDashboard() {
   const urgent = policiesWithDays.filter((p) => p.daysToExpiry >= 0 && p.daysToExpiry <= 7);
   const soon = policiesWithDays.filter((p) => p.daysToExpiry > 7 && p.daysToExpiry <= 30);
 
+  const pendingClientsCount = useMemo(() => {
+    return profiles.filter((p) => p.status === "pending").length;
+  }, [profiles]);
+
   return (
     <div className="min-h-screen font-sans" style={{ backgroundColor: BG }}>
       {/* Top bar */}
@@ -437,6 +441,7 @@ function AdminDashboard() {
             setActive("configuracoes");
             setIsSidebarOpen(false);
           }}
+          badge={pendingClientsCount}
         />
       </aside>
 
@@ -455,7 +460,7 @@ function AdminDashboard() {
               {active === "documentos" && <DocumentosView profiles={profiles} clientDocs={clientDocs} policyDocs={policyDocs} policies={policies} onReload={reload} />}
               {active === "importar" && <ImportarPlanilhaView onReload={reload} />}
               {active === "relatorios" && <RelatoriosView profiles={profiles} policies={policies} claims={claims} />}
-              {active === "configuracoes" && <ConfiguracoesView profiles={profiles} onReload={reload} />}
+              {active === "configuracoes" && <ConfiguracoesView profiles={profiles} clientDocs={clientDocs} onReload={reload} />}
               {active === "importar_apolice" && <ImportarApoliceView profiles={profiles} onReload={reload} onSwitch={setActive} />}
             </>
           )}
@@ -1874,7 +1879,15 @@ function RelatoriosView({ profiles, policies, claims }: { profiles: Profile[]; p
 /* ============================================================ */
 /* SECTION 9 — CONFIGURAÇÕES                                    */
 /* ============================================================ */
-function ConfiguracoesView({ profiles, onReload }: { profiles: Profile[]; onReload: () => void }) {
+function ConfiguracoesView({
+  profiles,
+  clientDocs,
+  onReload,
+}: {
+  profiles: Profile[];
+  clientDocs: ClientDoc[];
+  onReload: () => void;
+}) {
   const [broker, setBroker] = useState({
     company_name: "Dicoon Seguros", contact_email: "", whatsapp: "(51) 98236-7904",
     whatsapp_link: WA_LINK, business_hours: "Seg–Sex 9h–18h",
@@ -1888,6 +1901,11 @@ function ConfiguracoesView({ profiles, onReload }: { profiles: Profile[]; onRelo
   const [selectedClient, setSelectedClient] = useState<Profile | null>(null);
   const [showNew, setShowNew] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  const pendingClients = useMemo(() => {
+    return profiles.filter((p) => p.status === "pending");
+  }, [profiles]);
 
   const logs = useMemo(() => getClientLogs(profiles), [profiles]);
 
@@ -1902,6 +1920,63 @@ function ConfiguracoesView({ profiles, onReload }: { profiles: Profile[]; onRelo
       );
     });
   }, [profiles, search]);
+
+  const downloadDoc = async (d: ClientDoc) => {
+    try {
+      const { data, error } = await supabase.storage.from("client-documents").createSignedUrl(d.file_path, 60);
+      if (error || !data) throw error || new Error("Não foi possível gerar link do documento.");
+      window.open(data.signedUrl, "_blank");
+    } catch (err: any) {
+      toast.error("Erro ao baixar documento: " + err.message);
+    }
+  };
+
+  const handleAprovar = async (client: Profile) => {
+    setActionLoading(client.user_id);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ status: "approved", updated_at: new Date().toISOString() })
+        .eq("user_id", client.user_id);
+
+      if (error) throw error;
+      toast.success(`Cadastro de ${client.name} aprovado e ativado com sucesso!`);
+      onReload();
+    } catch (err: any) {
+      toast.error("Erro ao aprovar cadastro: " + err.message);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleSolicitarDocs = (client: Profile) => {
+    const msg = `Olá ${client.name}, recebemos seu cadastro no Portal Dicoon Seguros. Para concluirmos a ativação de sua conta, por favor envie uma foto legível do seu documento de identificação (RG ou CNH) e um comprovante de residência. Você pode fazer o upload desses documentos diretamente pelo portal de clientes ou me enviar por aqui mesmo. Obrigado!`;
+    const text = encodeURIComponent(msg);
+    const phoneNum = client.phone ? client.phone.replace(/\D/g, "") : "";
+    const url = phoneNum ? `https://wa.me/55${phoneNum}?text=${text}` : WA_LINK;
+    window.open(url, "_blank");
+  };
+
+  const handleRecusar = async (client: Profile) => {
+    if (!confirm(`Deseja recusar o cadastro de "${client.name}"?\nEsta ação excluirá permanentemente o registro de perfil.`)) return;
+    setActionLoading(client.user_id);
+    try {
+      // 1. Excluir documentos de cliente se houver
+      await supabase.from("client_documents").delete().eq("user_id", client.user_id);
+      // 2. Excluir roles se houver
+      await supabase.from("user_roles").delete().eq("user_id", client.user_id);
+      // 3. Excluir perfil
+      const { error } = await supabase.from("profiles").delete().eq("user_id", client.user_id);
+      if (error) throw error;
+      
+      toast.success(`Cadastro de ${client.name} recusado e removido.`);
+      onReload();
+    } catch (err: any) {
+      toast.error("Erro ao recusar cadastro: " + err.message);
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
   const deleteClient = async (profile: Profile) => {
     if (!confirm(`Tem certeza de que deseja excluir permanentemente o cadastro de "${profile.name}"?\nEsta ação apagará a conta do portal, apólices associadas e documentos.`)) return;
@@ -1975,6 +2050,104 @@ function ConfiguracoesView({ profiles, onReload }: { profiles: Profile[]; onRelo
   return (
     <>
       <h1 className="text-xl font-semibold text-gray-900 mb-4">Configurações</h1>
+
+      {/* Clientes Aguardando Aprovação */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm mb-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Clock className="w-5 h-5 text-amber-500 animate-pulse" />
+          <h2 className="text-sm font-bold text-gray-900">Clientes Aguardando Aprovação ({pendingClients.length})</h2>
+        </div>
+
+        {pendingClients.length === 0 ? (
+          <div className="text-center py-8 bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
+            <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
+            <p className="text-sm font-semibold text-gray-800">Tudo em dia!</p>
+            <p className="text-xs text-gray-500 mt-0.5">Nenhum cliente aguardando aprovação no momento.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto border border-gray-150 rounded-lg">
+            <table className="w-full text-sm min-w-[700px]">
+              <thead className="bg-gray-50 text-xs uppercase text-gray-505 border-b border-gray-200">
+                <tr>
+                  <th className="text-left px-4 py-3 font-medium">Nome / Contato</th>
+                  <th className="text-left px-4 py-3 font-medium">Cadastro</th>
+                  <th className="text-left px-4 py-3 font-medium">Documentos Enviados</th>
+                  <th className="text-right px-4 py-3 font-medium">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {pendingClients.map((client) => {
+                  const docs = clientDocs.filter((d) => d.user_id === client.user_id);
+                  const isActionLoading = actionLoading === client.user_id;
+
+                  return (
+                    <tr key={client.user_id} className="hover:bg-gray-50/50 transition">
+                      <td className="px-4 py-3">
+                        <div className="font-semibold text-gray-900">{client.name}</div>
+                        <div className="text-xs text-gray-500">{client.email}</div>
+                        {client.phone && <div className="text-[11px] text-gray-400 mt-0.5">Whats: {client.phone}</div>}
+                      </td>
+                      <td className="px-4 py-3 text-gray-600 text-xs">
+                        {new Date(client.created_at).toLocaleDateString("pt-BR")}
+                      </td>
+                      <td className="px-4 py-3">
+                        {docs.length === 0 ? (
+                          <span className="text-xs text-gray-400">Nenhum enviado</span>
+                        ) : (
+                          <div className="flex flex-wrap gap-1.5 max-w-[280px]">
+                            {docs.map((doc) => (
+                              <button
+                                key={doc.id}
+                                onClick={() => downloadDoc(doc)}
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[10px] font-medium border border-emerald-100 transition"
+                                title="Clique para baixar / visualizar"
+                              >
+                                <Download className="w-2.5 h-2.5" />
+                                {doc.doc_type}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="inline-flex gap-2">
+                          <button
+                            onClick={() => handleAprovar(client)}
+                            disabled={isActionLoading}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-white transition hover:brightness-110 disabled:opacity-60"
+                            style={{ backgroundColor: PRIMARY }}
+                          >
+                            {isActionLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <UserCheck className="w-3.5 h-3.5" />}
+                            Aprovar e Ativar
+                          </button>
+                          <button
+                            onClick={() => handleSolicitarDocs(client)}
+                            disabled={isActionLoading}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-white transition hover:brightness-110"
+                            style={{ backgroundColor: "#D97706" }}
+                          >
+                            <MessageCircle className="w-3.5 h-3.5" />
+                            Solicitar Docs
+                          </button>
+                          <button
+                            onClick={() => handleRecusar(client)}
+                            disabled={isActionLoading}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-white transition hover:brightness-110"
+                            style={{ backgroundColor: "#DC2626" }}
+                          >
+                            <UserX className="w-3.5 h-3.5" />
+                            Recusar
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
       
       {/* 2-Column Top Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">

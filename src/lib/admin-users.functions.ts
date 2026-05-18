@@ -80,6 +80,7 @@ export const inviteClient = createServerFn({ method: 'POST' })
         phone: data.phone || null,
         birth_date: data.birth_date || null,
         address: data.address || null,
+        status: 'approved',
         updated_at: new Date().toISOString(),
       }, { onConflict: 'user_id' });
 

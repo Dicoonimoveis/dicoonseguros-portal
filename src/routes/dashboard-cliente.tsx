@@ -18,6 +18,8 @@ import {
   CheckCircle2,
   XCircle,
   Loader2,
+  Check,
+  Upload,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { signOut, getCurrentUser, refreshSessionState, onSessionChange, logClientAccess } from "@/lib/auth";
@@ -217,6 +219,7 @@ function ClientDashboard() {
   }, [profile, sessionUser]);
 
   const displayName = profile?.name ?? sessionUser?.name ?? sessionUser?.email ?? "Cliente";
+  const isPending = profile?.status === "pending";
 
   return (
     <div className="min-h-screen font-sans" style={{ backgroundColor: BG, fontFamily: "Inter, system-ui, sans-serif" }}>
@@ -241,38 +244,44 @@ function ClientDashboard() {
       </header>
 
       {/* Sidebar */}
-      <aside className="fixed top-16 bottom-0 left-0 z-20 hidden md:block bg-gray-50 border-r border-gray-200 py-4 px-2" style={{ width: 185 }}>
-        <nav className="space-y-0.5">
-          <NavItem icon={<FileText className="w-4 h-4" />} label="Minhas apólices" k="apolices" active={active} onClick={setActive} />
-          <NavItem icon={<AlertTriangle className="w-4 h-4" />} label="Sinistros" k="sinistros" active={active} onClick={setActive} />
-          <NavItem icon={<Folder className="w-4 h-4" />} label="Meus documentos" k="documentos" active={active} onClick={setActive} />
-          <NavItem icon={<Download className="w-4 h-4" />} label="Apólices / PDFs" k="pdfs" active={active} onClick={setActive} />
-          <NavItem icon={<MessageCircle className="w-4 h-4" />} label="Falar com corretor" k="corretor" active={active} onClick={setActive} />
-          <NavItem icon={<User className="w-4 h-4" />} label="Dados pessoais" k="perfil" active={active} onClick={setActive} />
-        </nav>
-      </aside>
+      {!isPending && (
+        <aside className="fixed top-16 bottom-0 left-0 z-20 hidden md:block bg-gray-50 border-r border-gray-200 py-4 px-2" style={{ width: 185 }}>
+          <nav className="space-y-0.5">
+            <NavItem icon={<FileText className="w-4 h-4" />} label="Minhas apólices" k="apolices" active={active} onClick={setActive} />
+            <NavItem icon={<AlertTriangle className="w-4 h-4" />} label="Sinistros" k="sinistros" active={active} onClick={setActive} />
+            <NavItem icon={<Folder className="w-4 h-4" />} label="Meus documentos" k="documentos" active={active} onClick={setActive} />
+            <NavItem icon={<Download className="w-4 h-4" />} label="Apólices / PDFs" k="pdfs" active={active} onClick={setActive} />
+            <NavItem icon={<MessageCircle className="w-4 h-4" />} label="Falar com corretor" k="corretor" active={active} onClick={setActive} />
+            <NavItem icon={<User className="w-4 h-4" />} label="Dados pessoais" k="perfil" active={active} onClick={setActive} />
+          </nav>
+        </aside>
+      )}
 
       {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-20 bg-white border-t border-gray-200 grid grid-cols-6 text-[10px]">
-        {[
-          { k: "apolices" as const, icon: <FileText className="w-4 h-4 mx-auto" />, l: "Apólices" },
-          { k: "sinistros" as const, icon: <AlertTriangle className="w-4 h-4 mx-auto" />, l: "Sinistros" },
-          { k: "documentos" as const, icon: <Folder className="w-4 h-4 mx-auto" />, l: "Docs" },
-          { k: "pdfs" as const, icon: <Download className="w-4 h-4 mx-auto" />, l: "PDFs" },
-          { k: "corretor" as const, icon: <MessageCircle className="w-4 h-4 mx-auto" />, l: "Corretor" },
-          { k: "perfil" as const, icon: <User className="w-4 h-4 mx-auto" />, l: "Perfil" },
-        ].map((it) => (
-          <button key={it.k} onClick={() => setActive(it.k)} className="py-2" style={{ color: active === it.k ? PRIMARY : "#6b7280" }}>
-            {it.icon}<div>{it.l}</div>
-          </button>
-        ))}
-      </nav>
+      {!isPending && (
+        <nav className="md:hidden fixed bottom-0 inset-x-0 z-20 bg-white border-t border-gray-200 grid grid-cols-6 text-[10px]">
+          {[
+            { k: "apolices" as const, icon: <FileText className="w-4 h-4 mx-auto" />, l: "Apólices" },
+            { k: "sinistros" as const, icon: <AlertTriangle className="w-4 h-4 mx-auto" />, l: "Sinistros" },
+            { k: "documentos" as const, icon: <Folder className="w-4 h-4 mx-auto" />, l: "Docs" },
+            { k: "pdfs" as const, icon: <Download className="w-4 h-4 mx-auto" />, l: "PDFs" },
+            { k: "corretor" as const, icon: <MessageCircle className="w-4 h-4 mx-auto" />, l: "Corretor" },
+            { k: "perfil" as const, icon: <User className="w-4 h-4 mx-auto" />, l: "Perfil" },
+          ].map((it) => (
+            <button key={it.k} onClick={() => setActive(it.k)} className="py-2" style={{ color: active === it.k ? PRIMARY : "#6b7280" }}>
+              {it.icon}<div>{it.l}</div>
+            </button>
+          ))}
+        </nav>
+      )}
 
       {/* Main */}
-      <main className="pt-16 md:pl-[185px] pb-20 md:pb-0">
+      <main className={`pt-16 pb-20 md:pb-0 ${isPending ? "w-full" : "md:pl-[185px]"}`}>
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
           {loading ? (
             <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>
+          ) : isPending ? (
+            <PendingApprovalView profile={profile!} docs={clientDocs} onReload={loadCore} />
           ) : (
             <>
               {active === "apolices" && <PoliciesView policies={policies} userId={userId!} />}
@@ -1053,6 +1062,210 @@ function EmptyState({ icon, title, description }: { icon: React.ReactNode; title
       <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 text-gray-400 mb-4">{icon}</div>
       <h3 className="text-base font-semibold text-gray-800">{title}</h3>
       <p className="text-sm text-gray-500 mt-1">{description}</p>
+    </div>
+  );
+}
+
+/* ============== PENDING APPROVAL VIEW ============== */
+function PendingApprovalView({ profile, docs, onReload }: { profile: Profile; docs: ClientDoc[]; onReload: () => void }) {
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [docType, setDocType] = useState<string>("CNH");
+  const [docTypeOther, setDocTypeOther] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = (file: File) => {
+    if (!["application/pdf", "image/jpeg", "image/jpg", "image/png"].includes(file.type)) {
+      alert("Formato não suportado. Use PDF, JPG ou PNG.");
+      return;
+    }
+    if (file.size > MAX_SIZE) {
+      alert("Arquivo maior que 10 MB.");
+      return;
+    }
+    setPendingFile(file);
+  };
+
+  const confirmUpload = async () => {
+    if (!pendingFile) return;
+    setUploading(true);
+    try {
+      const ext = pendingFile.name.split(".").pop();
+      const path = `${profile.user_id}/${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from("client-documents")
+        .upload(path, pendingFile);
+
+      if (uploadError) throw uploadError;
+
+      const finalType = docType === "Outro" ? (docTypeOther.trim() || "Outro") : docType;
+
+      const { error: dbError } = await supabase
+        .from("client_documents")
+        .insert({
+          user_id: profile.user_id,
+          file_name: pendingFile.name,
+          file_path: path,
+          doc_type: finalType,
+          size_bytes: pendingFile.size,
+        });
+
+      if (dbError) throw dbError;
+
+      setPendingFile(null);
+      setDocTypeOther("");
+      onReload();
+    } catch (err: any) {
+      console.error(err);
+      alert("Erro ao enviar: " + (err.message ?? err));
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDownload = async (d: ClientDoc) => {
+    const { data, error } = await supabase.storage.from("client-documents").createSignedUrl(d.file_path, 60);
+    if (error || !data) { alert("Não foi possível gerar o download."); return; }
+    window.open(data.signedUrl, "_blank");
+  };
+
+  const handleDelete = async (d: ClientDoc) => {
+    if (!confirm("Tem certeza que deseja excluir este documento?")) return;
+    try {
+      await supabase.storage.from("client-documents").remove([d.file_path]);
+      await supabase.from("client_documents").delete().eq("id", d.id);
+      onReload();
+    } catch (err) {
+      console.error(err);
+      alert("Erro ao excluir.");
+    }
+  };
+
+  return (
+    <div className="max-w-3xl mx-auto space-y-6 pt-4">
+      {/* Status card */}
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-8 text-center shadow-sm">
+        <div className="w-16 h-16 bg-[#DBEAFE] text-[#1D4ED8] rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+          <Clock className="w-8 h-8" />
+        </div>
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Cadastro em Análise</h2>
+        <p className="text-sm text-gray-600 max-w-lg mx-auto leading-relaxed mb-6">
+          Olá, <span className="font-semibold">{profile.name}</span>! Seu cadastro foi recebido com sucesso.
+          Nossos corretores estão analisando as suas informações para liberar o acesso completo ao portal.
+          Você receberá uma confirmação por e-mail assim que seu acesso for ativado.
+        </p>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <a
+            href="https://wa.me/5551982367904?text=Ol%C3%A1%2C%20gostaria%20de%20saber%20o%20status%20do%20meu%20cadastro%20no%20portal%20Dicoon%20Seguros."
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold text-white transition hover:brightness-110 shadow-sm"
+            style={{ backgroundColor: WHATSAPP }}
+          >
+            <MessageCircle className="w-4 h-4" /> Falar com corretor no WhatsApp
+          </a>
+        </div>
+      </div>
+
+      {/* Document Uploader Area */}
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+        <h3 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-2">
+          <Folder className="w-5 h-5 text-gray-400" /> Enviar documentos para análise
+        </h3>
+        <p className="text-xs text-gray-500 mb-4 leading-relaxed">
+          Para agilizar a sua aprovação, por favor anexe fotos legíveis ou PDFs do seu documento de identificação (RG ou CNH) e um comprovante de residência recente.
+        </p>
+
+        {/* Upload box */}
+        {!pendingFile ? (
+          <div
+            onClick={() => inputRef.current?.click()}
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOver(false);
+              if (e.dataTransfer.files?.[0]) handleFile(e.dataTransfer.files[0]);
+            }}
+            className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition ${
+              dragOver ? "border-emerald-500 bg-emerald-50/20" : "border-gray-300 hover:border-emerald-500 hover:bg-gray-50/50"
+            }`}
+          >
+            <input type="file" ref={inputRef} onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} accept=".pdf,image/*" className="hidden" />
+            <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+            <p className="text-sm font-medium text-gray-700">Clique para selecionar ou arraste o arquivo aqui</p>
+            <p className="text-xs text-gray-400 mt-1">PDF, JPG ou PNG (Máximo 10 MB)</p>
+          </div>
+        ) : (
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+            <div className="flex items-center gap-3 mb-4">
+              <FileText className="w-8 h-8 text-emerald-600 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-gray-900 truncate">{pendingFile.name}</p>
+                <p className="text-xs text-gray-500">{(pendingFile.size / 1024).toFixed(0)} KB</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Tipo de documento</label>
+                <select value={docType} onChange={(e) => setDocType(e.target.value)} className="w-full text-sm rounded-lg border border-gray-300 px-3 py-2 bg-white outline-none">
+                  {DOC_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              {docType === "Outro" && (
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Especificar tipo</label>
+                  <input type="text" value={docTypeOther} onChange={(e) => setDocTypeOther(e.target.value)} placeholder="Ex: Cópia CNH" className="w-full text-sm rounded-lg border border-gray-300 px-3 py-2 outline-none" />
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setPendingFile(null)} disabled={uploading} className="px-4 py-2 text-xs font-semibold text-gray-500 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 transition">Cancelar</button>
+              <button onClick={confirmUpload} disabled={uploading} className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white rounded-lg transition hover:brightness-110 disabled:opacity-60" style={{ backgroundColor: PRIMARY }}>
+                {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                {uploading ? "Enviando..." : "Confirmar Envio"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Uploaded Documents List */}
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+        <h3 className="text-base font-semibold text-gray-900 mb-4">Documentos Enviados ({docs.length})</h3>
+        {docs.length === 0 ? (
+          <p className="text-sm text-gray-500 text-center py-6">Nenhum documento enviado ainda.</p>
+        ) : (
+          <div className="grid sm:grid-cols-2 gap-3">
+            {docs.map((d) => (
+              <div key={d.id} className="bg-white rounded-xl border border-gray-200 p-4">
+                <div className="flex items-start gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-md flex items-center justify-center shrink-0" style={{ backgroundColor: `${PRIMARY}15`, color: PRIMARY }}>
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-gray-900 truncate">{d.file_name}</p>
+                    <p className="text-xs text-gray-500">{d.doc_type} · {(d.size_bytes / 1024).toFixed(0)} KB</p>
+                    <p className="text-xs text-gray-400 mt-0.5">Enviado em {new Date(d.created_at).toLocaleDateString("pt-BR")}</p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => handleDownload(d)} className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md border border-gray-300 text-xs font-medium hover:bg-gray-50 text-gray-700">
+                    <Download className="w-3.5 h-3.5" /> Baixar
+                  </button>
+                  <button onClick={() => handleDelete(d)} className="inline-flex items-center justify-center px-3 py-1.5 rounded-md text-xs font-medium text-white hover:brightness-110" style={{ backgroundColor: "#DC2626" }}>
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
