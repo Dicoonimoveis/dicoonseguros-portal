@@ -1,20 +1,8 @@
 import * as pdfjsLib from 'pdfjs-dist';
 
-// ✅ Fixed version that exists on cdnjs — do NOT use dynamic ${pdfjsLib.version}
-const WORKER_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
-const WORKER_FALLBACK = 'https://unpkg.com/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs';
-
-function initWorker() {
-  try {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = WORKER_CDN;
-    console.log('[extractPdfText] Worker iniciado via cdnjs:', WORKER_CDN);
-  } catch (err) {
-    console.warn('[extractPdfText] Falha no worker principal, usando fallback:', WORKER_FALLBACK, err);
-    pdfjsLib.GlobalWorkerOptions.workerSrc = WORKER_FALLBACK;
-  }
-}
-
-initWorker();
+// ✅ Versão 5.x via unpkg — compatível com pdfjs-dist instalado
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://unpkg.com/pdfjs-dist@5.7.284/build/pdf.worker.min.mjs';
 
 /**
  * Extracts the full text content from a PDF File object.
