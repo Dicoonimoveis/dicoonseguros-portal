@@ -1,8 +1,9 @@
 import * as pdfjsLib from 'pdfjs-dist';
 
 // Configure the worker source using a reliable CDN matching the exact library version
-// ✅ CORRETO — versão fixa que existe no CDN
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs`;
+// ✅ Versão 5.x via unpkg — compatível com pdfjs-dist@5.7.284 instalado
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://unpkg.com/pdfjs-dist@5.7.284/build/pdf.worker.min.mjs';
 
 export async function extractPdfText(file: File): Promise<string> {
   const arrayBuffer = await file.arrayBuffer();

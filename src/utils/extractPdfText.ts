@@ -1,6 +1,6 @@
 import * as pdfjsLib from 'pdfjs-dist';
 
-// ✅ Versão 5.x via unpkg — compatível com pdfjs-dist instalado
+// ✅ Versão 5.x via unpkg — compatível com pdfjs-dist@5.7.284 instalado
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   'https://unpkg.com/pdfjs-dist@5.7.284/build/pdf.worker.min.mjs';
 
@@ -46,7 +46,7 @@ export async function extractPdfText(file: File): Promise<string> {
       console.log(`[extractPdfText] Página ${i}/${pdf.numPages} extraída (${pageText.length} chars)`);
     } catch (err) {
       console.warn(`[extractPdfText] Falha ao extrair texto da página ${i}:`, err);
-      // Continue processing remaining pages instead of aborting
+      // Continua as demais páginas em vez de abortar tudo
     }
   }
 
