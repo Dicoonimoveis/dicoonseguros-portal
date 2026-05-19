@@ -1,7 +1,8 @@
 import * as pdfjsLib from 'pdfjs-dist';
 
 // Configure the PDF.js worker via CDN matching the exact installed version
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+// ✅ CORRETO — versão fixa que existe no CDN
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs`;
 
 /**
  * Extracts the full text content from a PDF File object.
