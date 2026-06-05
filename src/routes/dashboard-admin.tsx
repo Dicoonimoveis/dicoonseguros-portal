@@ -10,7 +10,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { signOut } from "@/lib/auth";
 import { useServerFn } from "@tanstack/react-start";
-import { inviteClient } from "@/lib/admin-users.functions";
+import { inviteClient, deleteClient as deleteClientFn } from "@/lib/admin-users.functions";
 import { extractPdfText } from "@/lib/pdf";
 // @ts-ignore
 import * as XLSX from "@e965/xlsx";
@@ -1946,6 +1946,7 @@ function ConfiguracoesView({
   const [showNew, setShowNew] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const removeClient = useServerFn(deleteClientFn);
 
   const pendingClients = useMemo(() => {
     return profiles.filter((p) => p.status === "pending");
@@ -2005,18 +2006,11 @@ function ConfiguracoesView({
     if (!confirm(`Deseja recusar o cadastro de "${client.name}"?\nEsta ação excluirá permanentemente o registro de perfil.`)) return;
     setActionLoading(client.user_id);
     try {
-      // 1. Excluir documentos de cliente se houver
-      await supabase.from("client_documents").delete().eq("user_id", client.user_id);
-      // 2. Excluir roles se houver
-      await supabase.from("user_roles").delete().eq("user_id", client.user_id);
-      // 3. Excluir perfil
-      const { error } = await supabase.from("profiles").delete().eq("user_id", client.user_id);
-      if (error) throw error;
-      
+      await removeClient({ data: { userId: client.user_id } });
       toast.success(`Cadastro de ${client.name} recusado e removido.`);
       onReload();
     } catch (err: any) {
-      toast.error("Erro ao recusar cadastro: " + err.message);
+      toast.error("Erro ao recusar cadastro: " + (err?.message ?? "tente novamente."));
     } finally {
       setActionLoading(null);
     }
@@ -2024,34 +2018,19 @@ function ConfiguracoesView({
 
   const deleteClient = async (profile: Profile) => {
     if (!confirm(`Tem certeza de que deseja excluir permanentemente o cadastro de "${profile.name}"?\nEsta ação apagará a conta do portal, apólices associadas e documentos.`)) return;
-    
+
     setDeletingId(profile.user_id);
     try {
-      // 1. Apagar apólices e documentos de apólices
-      const { data: pols } = await supabase.from("policies").select("id").eq("user_id", profile.user_id);
-      if (pols && pols.length > 0) {
-        const polIds = pols.map((po) => po.id);
-        await supabase.from("policy_documents").delete().in("policy_id", polIds);
-        await supabase.from("policies").delete().eq("user_id", profile.user_id);
-      }
-      
-      // 2. Apagar sinistros, documentos do cliente e roles
-      await supabase.from("claims").delete().eq("user_id", profile.user_id);
-      await supabase.from("client_documents").delete().eq("user_id", profile.user_id);
-      await supabase.from("user_roles").delete().eq("user_id", profile.user_id);
-      
-      // 3. Apagar perfil do cliente
-      const { error } = await supabase.from("profiles").delete().eq("user_id", profile.user_id);
-      if (error) throw error;
-      
-      alert("Cadastro do cliente e todos os dados associados foram excluídos com sucesso!");
+      await removeClient({ data: { userId: profile.user_id } });
+      toast.success("Cadastro do cliente e todos os dados associados foram excluídos com sucesso!");
       onReload();
     } catch (err: any) {
-      alert("Erro ao excluir cliente: " + err.message);
+      toast.error("Erro ao excluir cliente: " + (err?.message ?? "tente novamente."));
     } finally {
       setDeletingId(null);
     }
   };
+
 
   const formatAccessDate = (dateStr: string) => {
     try {
