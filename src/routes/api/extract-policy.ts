@@ -55,7 +55,7 @@ export const Route = createFileRoute("/api/extract-policy")({
             return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 });
           }
 
-          const body = await request.json() as { fileBase64: string; mimeType: string };
+          const body = await request.json() as { fileBase64: string; mimeType: string; pdfText?: string };
           if (!body.fileBase64 || !body.mimeType) {
             return new Response(JSON.stringify({ error: "Missing file" }), { status: 400 });
           }
@@ -65,15 +65,21 @@ export const Route = createFileRoute("/api/extract-policy")({
           let rawText = "";
           try {
             if (body.mimeType === "application/pdf") {
-              const buffer = Buffer.from(body.fileBase64, "base64");
-              try {
-                const { PDFParse } = await import("pdf-parse");
-                const parser = new PDFParse({ data: new Uint8Array(buffer) });
-                const data = await parser.getText();
-                rawText = data.text || "";
-              } catch (e) {
-                console.error("PDF parse error:", e);
-                rawText = buffer.toString("utf-8"); // fallback raw bytes
+              // Prefer the high-fidelity text already extracted on the client
+              // (pdfjs-dist). Only fall back to server-side parsing if missing.
+              if (body.pdfText && body.pdfText.trim().length > 0) {
+                rawText = body.pdfText;
+              } else {
+                const buffer = Buffer.from(body.fileBase64, "base64");
+                try {
+                  const { PDFParse } = await import("pdf-parse");
+                  const parser = new PDFParse({ data: new Uint8Array(buffer) });
+                  const data = await parser.getText();
+                  rawText = data.text || "";
+                } catch (e) {
+                  console.error("PDF parse error:", e);
+                  rawText = buffer.toString("utf-8"); // fallback raw bytes
+                }
               }
             } else {
               rawText = Buffer.from(body.fileBase64, "base64").toString("utf-8");
@@ -195,7 +201,7 @@ export const Route = createFileRoute("/api/extract-policy")({
           // 2. Chamar o Lovable AI Gateway com visão/PDF
           let aiExtracted: Record<string, any> = {};
           try {
-            console.log(`Sending document to AI extraction using google/gemini-1.5-flash (type: ${body.mimeType})`);
+            console.log(`Sending document to AI extraction using google/gemini-2.5-flash (type: ${body.mimeType})`);
             const isPdf = body.mimeType === "application/pdf";
             const messages: any[] = [];
 
@@ -224,7 +230,7 @@ export const Route = createFileRoute("/api/extract-policy")({
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                model: "google/gemini-1.5-flash",
+                model: "google/gemini-2.5-flash",
                 response_format: { type: "json_object" },
                 messages: messages,
               }),

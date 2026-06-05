@@ -180,6 +180,7 @@ export type Database = {
           policy_number: string
           policy_type: string
           premium: string | null
+          renewal_date: string | null
           start_date: string
           status: string
           updated_at: string
@@ -195,6 +196,7 @@ export type Database = {
           policy_number: string
           policy_type: string
           premium?: string | null
+          renewal_date?: string | null
           start_date: string
           status?: string
           updated_at?: string
@@ -210,6 +212,7 @@ export type Database = {
           policy_number?: string
           policy_type?: string
           premium?: string | null
+          renewal_date?: string | null
           start_date?: string
           status?: string
           updated_at?: string
@@ -225,6 +228,7 @@ export type Database = {
           file_path: string
           id: string
           policy_id: string
+          texto_extraido: string | null
           user_id: string
         }
         Insert: {
@@ -234,6 +238,7 @@ export type Database = {
           file_path: string
           id?: string
           policy_id: string
+          texto_extraido?: string | null
           user_id: string
         }
         Update: {
@@ -243,6 +248,7 @@ export type Database = {
           file_path?: string
           id?: string
           policy_id?: string
+          texto_extraido?: string | null
           user_id?: string
         }
         Relationships: [
@@ -265,6 +271,7 @@ export type Database = {
           id: string
           name: string
           phone: string | null
+          status: string
           updated_at: string
           user_id: string
         }
@@ -277,6 +284,7 @@ export type Database = {
           id?: string
           name: string
           phone?: string | null
+          status?: string
           updated_at?: string
           user_id: string
         }
@@ -289,6 +297,7 @@ export type Database = {
           id?: string
           name?: string
           phone?: string | null
+          status?: string
           updated_at?: string
           user_id?: string
         }

@@ -45,7 +45,7 @@ type NavKey =
   | "dashboard" | "clientes" | "apolices" | "vencimentos" | "sinistros"
   | "documentos" | "importar" | "relatorios" | "configuracoes" | "cadastro_cliente" | "importar_apolice";
 
-type Profile = { user_id: string; name: string; email: string; cpf: string | null; phone: string | null; created_at: string; birth_date?: string | null; address?: string | null };
+type Profile = { user_id: string; name: string; email: string; cpf: string | null; phone: string | null; created_at: string; birth_date?: string | null; address?: string | null; status?: string | null };
 type Policy = {
   id: string; user_id: string; policy_type: string; item_label: string | null;
   policy_number: string; insurer: string; start_date: string; end_date: string;
@@ -2637,7 +2637,7 @@ function ImportarApoliceView({
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ fileBase64: base64, mimeType: f.type || "application/pdf" }),
+        body: JSON.stringify({ fileBase64: base64, mimeType: f.type || "application/pdf", pdfText: clientPdfText }),
       });
       clearInterval(progressInterval);
       setProgress(100);
@@ -3017,7 +3017,7 @@ function ClientSearchSelector({
   selectedClient,
   onSelect,
 }: {
-  allProfiles: Array<{ user_id: string; name: string; email: string; cpf: string | null; phone?: string | null; address?: string | null }>;
+  allProfiles: Array<{ user_id: string; name: string; email: string; cpf: string | null; phone?: string | null; address?: string | null; birth_date?: string | null }>;
   selectedClient: ExistingClient | null;
   onSelect: (c: typeof allProfiles[0]) => void;
 }) {
@@ -3112,7 +3112,7 @@ function Step3Review({
   setForm: (f: Extracted) => void;
   existingClient: ExistingClient | null;
   setExistingClient: (c: ExistingClient | null) => void;
-  allProfiles: Array<{ user_id: string; name: string; email: string; cpf: string | null; phone?: string | null; address?: string | null }>;
+  allProfiles: Array<{ user_id: string; name: string; email: string; cpf: string | null; phone?: string | null; address?: string | null; birth_date?: string | null }>;
   onCancel: () => void;
   onConfirm: () => void;
   saving: boolean;

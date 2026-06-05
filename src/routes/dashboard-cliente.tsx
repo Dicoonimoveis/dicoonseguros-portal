@@ -102,6 +102,7 @@ type Profile = {
   birth_date: string | null;
   phone: string | null;
   address: string | null;
+  status?: string | null;
 };
 
 function daysUntil(dateStr: string): number {
