@@ -55,7 +55,7 @@ export const Route = createFileRoute("/api/extract-policy")({
             return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 });
           }
 
-          const body = await request.json() as { fileBase64: string; mimeType: string };
+          const body = await request.json() as { fileBase64: string; mimeType: string; pdfText?: string };
           if (!body.fileBase64 || !body.mimeType) {
             return new Response(JSON.stringify({ error: "Missing file" }), { status: 400 });
           }
