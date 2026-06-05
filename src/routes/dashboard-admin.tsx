@@ -10,7 +10,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { signOut } from "@/lib/auth";
 import { useServerFn } from "@tanstack/react-start";
-import { inviteClient } from "@/lib/admin-users.functions";
+import { inviteClient, deleteClient as deleteClientFn } from "@/lib/admin-users.functions";
 import { extractPdfText } from "@/lib/pdf";
 // @ts-ignore
 import * as XLSX from "@e965/xlsx";
