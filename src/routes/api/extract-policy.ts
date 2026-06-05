@@ -201,7 +201,7 @@ export const Route = createFileRoute("/api/extract-policy")({
           // 2. Chamar o Lovable AI Gateway com visão/PDF
           let aiExtracted: Record<string, any> = {};
           try {
-            console.log(`Sending document to AI extraction using google/gemini-1.5-flash (type: ${body.mimeType})`);
+            console.log(`Sending document to AI extraction using google/gemini-2.5-flash (type: ${body.mimeType})`);
             const isPdf = body.mimeType === "application/pdf";
             const messages: any[] = [];
 
