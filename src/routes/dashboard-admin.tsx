@@ -2637,7 +2637,7 @@ function ImportarApoliceView({
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ fileBase64: base64, mimeType: f.type || "application/pdf" }),
+        body: JSON.stringify({ fileBase64: base64, mimeType: f.type || "application/pdf", pdfText: clientPdfText }),
       });
       clearInterval(progressInterval);
       setProgress(100);
