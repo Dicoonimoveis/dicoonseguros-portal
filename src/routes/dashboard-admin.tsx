@@ -3017,7 +3017,7 @@ function ClientSearchSelector({
   selectedClient,
   onSelect,
 }: {
-  allProfiles: Array<{ user_id: string; name: string; email: string; cpf: string | null; phone?: string | null; address?: string | null }>;
+  allProfiles: Array<{ user_id: string; name: string; email: string; cpf: string | null; phone?: string | null; address?: string | null; birth_date?: string | null }>;
   selectedClient: ExistingClient | null;
   onSelect: (c: typeof allProfiles[0]) => void;
 }) {
