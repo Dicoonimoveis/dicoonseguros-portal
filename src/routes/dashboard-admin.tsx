@@ -3112,7 +3112,7 @@ function Step3Review({
   setForm: (f: Extracted) => void;
   existingClient: ExistingClient | null;
   setExistingClient: (c: ExistingClient | null) => void;
-  allProfiles: Array<{ user_id: string; name: string; email: string; cpf: string | null; phone?: string | null; address?: string | null }>;
+  allProfiles: Array<{ user_id: string; name: string; email: string; cpf: string | null; phone?: string | null; address?: string | null; birth_date?: string | null }>;
   onCancel: () => void;
   onConfirm: () => void;
   saving: boolean;
