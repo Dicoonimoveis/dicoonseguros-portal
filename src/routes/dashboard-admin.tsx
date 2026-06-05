@@ -1946,6 +1946,7 @@ function ConfiguracoesView({
   const [showNew, setShowNew] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const removeClient = useServerFn(deleteClientFn);
 
   const pendingClients = useMemo(() => {
     return profiles.filter((p) => p.status === "pending");
