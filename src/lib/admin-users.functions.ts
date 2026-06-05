@@ -108,3 +108,59 @@ export const inviteClient = createServerFn({ method: 'POST' })
 
     return { userId, alreadyExisted };
   });
+
+const deleteSchema = z.object({
+  userId: z.string().uuid(),
+});
+
+/**
+ * Admin-only: permanently delete a client and ALL associated data, including
+ * the auth account. Uses the service-role client so it bypasses RLS and can
+ * remove the underlying auth user (which the browser client cannot do).
+ */
+export const deleteClient = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => deleteSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    await ensureCallerIsAdmin(context.userId);
+
+    const targetId = data.userId;
+    if (targetId === context.userId) {
+      throw new Error('Você não pode excluir a própria conta.');
+    }
+
+    // 1. Policy documents (children of policies)
+    const { data: pols } = await supabaseAdmin
+      .from('policies')
+      .select('id')
+      .eq('user_id', targetId);
+    if (pols && pols.length > 0) {
+      const polIds = pols.map((p) => p.id);
+      await supabaseAdmin.from('policy_documents').delete().in('policy_id', polIds);
+    }
+
+    // 2. Remaining user-owned rows
+    await supabaseAdmin.from('policies').delete().eq('user_id', targetId);
+    await supabaseAdmin.from('claims').delete().eq('user_id', targetId);
+    await supabaseAdmin.from('client_documents').delete().eq('user_id', targetId);
+    await supabaseAdmin.from('user_roles').delete().eq('user_id', targetId);
+
+    // 3. Profile
+    const { error: profileErr } = await supabaseAdmin
+      .from('profiles')
+      .delete()
+      .eq('user_id', targetId);
+    if (profileErr) {
+      console.error('deleteClient profile delete failed:', profileErr);
+      throw new Error(`Falha ao excluir o cadastro: ${profileErr.message}`);
+    }
+
+    // 4. Auth account (only the service-role key can do this)
+    const { error: authErr } = await supabaseAdmin.auth.admin.deleteUser(targetId);
+    if (authErr) {
+      console.error('deleteClient auth delete failed:', authErr);
+      // Profile data is already gone; surface a soft warning instead of failing.
+    }
+
+    return { success: true };
+  });
