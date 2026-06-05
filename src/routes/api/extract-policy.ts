@@ -65,15 +65,21 @@ export const Route = createFileRoute("/api/extract-policy")({
           let rawText = "";
           try {
             if (body.mimeType === "application/pdf") {
-              const buffer = Buffer.from(body.fileBase64, "base64");
-              try {
-                const { PDFParse } = await import("pdf-parse");
-                const parser = new PDFParse({ data: new Uint8Array(buffer) });
-                const data = await parser.getText();
-                rawText = data.text || "";
-              } catch (e) {
-                console.error("PDF parse error:", e);
-                rawText = buffer.toString("utf-8"); // fallback raw bytes
+              // Prefer the high-fidelity text already extracted on the client
+              // (pdfjs-dist). Only fall back to server-side parsing if missing.
+              if (body.pdfText && body.pdfText.trim().length > 0) {
+                rawText = body.pdfText;
+              } else {
+                const buffer = Buffer.from(body.fileBase64, "base64");
+                try {
+                  const { PDFParse } = await import("pdf-parse");
+                  const parser = new PDFParse({ data: new Uint8Array(buffer) });
+                  const data = await parser.getText();
+                  rawText = data.text || "";
+                } catch (e) {
+                  console.error("PDF parse error:", e);
+                  rawText = buffer.toString("utf-8"); // fallback raw bytes
+                }
               }
             } else {
               rawText = Buffer.from(body.fileBase64, "base64").toString("utf-8");
