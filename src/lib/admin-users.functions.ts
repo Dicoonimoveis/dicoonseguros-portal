@@ -48,15 +48,32 @@ export const inviteClient = createServerFn({ method: 'POST' })
     });
 
     if (inviteRes.error) {
-      // If the user already exists, fall back to lookup.
       const msg = inviteRes.error.message?.toLowerCase() ?? '';
       const alreadyRegistered =
         msg.includes('already') || msg.includes('registered') || msg.includes('exists');
-      if (!alreadyRegistered) {
-        console.error('inviteUserByEmail failed:', inviteRes.error);
-        throw new Error('Não foi possível enviar o convite. Tente novamente.');
+      if (alreadyRegistered) {
+        alreadyExisted = true;
+      } else {
+        // Email sending may not be configured. Fall back to creating the user
+        // directly so the account exists; the client can use "Esqueci minha
+        // senha" to set a password later.
+        const created = await supabaseAdmin.auth.admin.createUser({
+          email,
+          email_confirm: true,
+          user_metadata: { name: data.name },
+        });
+        if (created.error) {
+          const cMsg = created.error.message?.toLowerCase() ?? '';
+          if (cMsg.includes('already') || cMsg.includes('registered') || cMsg.includes('exists')) {
+            alreadyExisted = true;
+          } else {
+            console.error('createUser fallback failed:', created.error);
+            throw new Error('Não foi possível criar o cliente. Tente novamente.');
+          }
+        } else {
+          userId = created.data.user?.id ?? null;
+        }
       }
-      alreadyExisted = true;
     } else {
       userId = inviteRes.data.user?.id ?? null;
     }
