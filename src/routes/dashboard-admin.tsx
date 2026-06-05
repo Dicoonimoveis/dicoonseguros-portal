@@ -45,7 +45,7 @@ type NavKey =
   | "dashboard" | "clientes" | "apolices" | "vencimentos" | "sinistros"
   | "documentos" | "importar" | "relatorios" | "configuracoes" | "cadastro_cliente" | "importar_apolice";
 
-type Profile = { user_id: string; name: string; email: string; cpf: string | null; phone: string | null; created_at: string; birth_date?: string | null; address?: string | null };
+type Profile = { user_id: string; name: string; email: string; cpf: string | null; phone: string | null; created_at: string; birth_date?: string | null; address?: string | null; status?: string | null };
 type Policy = {
   id: string; user_id: string; policy_type: string; item_label: string | null;
   policy_number: string; insurer: string; start_date: string; end_date: string;
