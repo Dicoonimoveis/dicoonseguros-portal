@@ -39,12 +39,14 @@ export const inviteClient = createServerFn({ method: 'POST' })
     await ensureCallerIsAdmin(context.userId);
 
     const email = data.email.toLowerCase();
+    // Standardize the client name to uppercase for a consistent look across the system.
+    const name = data.name.trim().toUpperCase();
     let userId: string | null = null;
     let alreadyExisted = false;
 
     // Try to invite (sends magic-link email; user sets own password).
     const inviteRes = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-      data: { name: data.name },
+      data: { name },
     });
 
     if (inviteRes.error) {
@@ -60,7 +62,7 @@ export const inviteClient = createServerFn({ method: 'POST' })
         const created = await supabaseAdmin.auth.admin.createUser({
           email,
           email_confirm: true,
-          user_metadata: { name: data.name },
+          user_metadata: { name },
         });
         if (created.error) {
           const cMsg = created.error.message?.toLowerCase() ?? '';
@@ -92,7 +94,7 @@ export const inviteClient = createServerFn({ method: 'POST' })
       .upsert({
         user_id: userId,
         email: email,
-        name: data.name,
+        name: name,
         cpf: data.cpf || null,
         phone: data.phone || null,
         birth_date: data.birth_date || null,

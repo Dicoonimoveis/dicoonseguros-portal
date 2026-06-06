@@ -1197,11 +1197,11 @@ function NovaApoliceModal({ profiles, onClose, onSaved }: { profiles: Profile[];
         const ext = file.name.split(".").pop() ?? "pdf";
         const path = `${form.user_id}/${newPolicy.id}.${ext}`;
         const { error: upErr } = await supabase.storage.from("policy-documents").upload(path, file, { upsert: true, contentType: file.type });
-        if (!upErr) {
-          await supabase.from("policy_documents").insert({
-            policy_id: newPolicy.id, user_id: form.user_id, file_path: path, file_name: file.name, doc_type: "apolice",
-          });
-        }
+        if (upErr) throw new Error(`Falha ao enviar o arquivo original: ${upErr.message}`);
+        const { error: docErr } = await supabase.from("policy_documents").insert({
+          policy_id: newPolicy.id, user_id: form.user_id, file_path: path, file_name: file.name, doc_type: "apolice",
+        });
+        if (docErr) throw new Error(`Falha ao salvar o arquivo da apólice: ${docErr.message}`);
       }
       onSaved();
     } catch (e) {
@@ -1304,15 +1304,16 @@ function EditarApoliceModal({
         const ext = file.name.split(".").pop() ?? "pdf";
         const path = `${form.user_id}/${policy.id}.${ext}`;
         const { error: upErr } = await supabase.storage.from("policy-documents").upload(path, file, { upsert: true, contentType: file.type });
-        if (!upErr) {
-          const { data: doc } = await supabase.from("policy_documents").select("id").eq("policy_id", policy.id).maybeSingle();
-          if (doc) {
-            await supabase.from("policy_documents").update({ file_path: path, file_name: file.name }).eq("id", doc.id);
-          } else {
-            await supabase.from("policy_documents").insert({
-              policy_id: policy.id, user_id: form.user_id, file_path: path, file_name: file.name, doc_type: "apolice",
-            });
-          }
+        if (upErr) throw new Error(`Falha ao enviar o arquivo original: ${upErr.message}`);
+        const { data: doc } = await supabase.from("policy_documents").select("id").eq("policy_id", policy.id).maybeSingle();
+        if (doc) {
+          const { error: updErr } = await supabase.from("policy_documents").update({ file_path: path, file_name: file.name }).eq("id", doc.id);
+          if (updErr) throw new Error(`Falha ao salvar o arquivo da apólice: ${updErr.message}`);
+        } else {
+          const { error: insErr } = await supabase.from("policy_documents").insert({
+            policy_id: policy.id, user_id: form.user_id, file_path: path, file_name: file.name, doc_type: "apolice",
+          });
+          if (insErr) throw new Error(`Falha ao salvar o arquivo da apólice: ${insErr.message}`);
         }
       }
       toast.success("Apólice atualizada com sucesso!");

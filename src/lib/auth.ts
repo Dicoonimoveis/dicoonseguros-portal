@@ -142,11 +142,30 @@ export async function signUp(
 }
 
 export async function signOut(): Promise<void> {
-  await supabase.auth.signOut();
+  // Clear cached state first so the UI updates immediately.
   cachedUser = null;
   cachedSession = null;
+  try {
+    // Local scope avoids the "Invalid Refresh Token" 400 that can leave a
+    // stale token behind and block the next sign-in.
+    await supabase.auth.signOut({ scope: "local" });
+  } catch {
+    /* ignore — we still purge local tokens below */
+  }
+  // Purge any leftover Supabase auth keys so a stale/expired refresh token
+  // can never block a fresh login after logout.
+  if (typeof window !== "undefined") {
+    try {
+      Object.keys(localStorage)
+        .filter((k) => k.startsWith("sb-") || k.includes("supabase.auth"))
+        .forEach((k) => localStorage.removeItem(k));
+    } catch {
+      /* noop */
+    }
+  }
   emitSessionChange();
 }
+
 
 export async function resetPassword(email: string): Promise<void> {
   const redirectTo =

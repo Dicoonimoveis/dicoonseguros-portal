@@ -1,0 +1,1 @@
+UPDATE public.profiles SET name = upper(name) WHERE name IS DISTINCT FROM upper(name);
