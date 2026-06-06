@@ -4,6 +4,7 @@ import { z } from "zod";
 import { Eye, EyeOff, Shield } from "lucide-react";
 import { signIn, signUp, resetPassword, logClientAccess } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
 
 export const Route = createFileRoute("/login")({
   beforeLoad: async () => {
