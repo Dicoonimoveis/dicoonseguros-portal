@@ -161,6 +161,41 @@ function LoginPage() {
     }
   };
 
+  const handleGoogle = async () => {
+    setError("");
+    setInfo("");
+    setIsLoading(true);
+    try {
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
+      });
+      if (result.error) {
+        setError("Não foi possível entrar com o Google. Tente novamente.");
+        setIsLoading(false);
+        return;
+      }
+      if (result.redirected) {
+        // Browser will redirect to Google.
+        return;
+      }
+      // Session set — decide destination by role.
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData.session?.user.id;
+      let isAdmin = false;
+      if (userId) {
+        const { data: roles } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", userId);
+        isAdmin = (roles ?? []).some((r) => r.role === "admin");
+      }
+      navigate({ to: isAdmin ? "/dashboard-admin" : "/dashboard-cliente" });
+    } catch {
+      setError("Não foi possível entrar com o Google. Tente novamente.");
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#F5F5F5] px-4 py-8 font-sans">
       <div className="w-full max-w-[390px] bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-black/5 p-8">
