@@ -258,7 +258,10 @@ function ClientDashboard() {
 
       {/* Mobile bottom nav */}
       {!isPending && (
-        <nav className="md:hidden fixed bottom-0 inset-x-0 z-20 bg-white border-t border-gray-200 grid grid-cols-6 text-[10px]">
+        <nav
+          className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-gray-200 grid grid-cols-6 text-[10px]"
+          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        >
           {[
             { k: "apolices" as const, icon: <FileText className="w-4 h-4 mx-auto" />, l: "Apólices" },
             { k: "sinistros" as const, icon: <AlertTriangle className="w-4 h-4 mx-auto" />, l: "Sinistros" },
@@ -267,15 +270,21 @@ function ClientDashboard() {
             { k: "corretor" as const, icon: <MessageCircle className="w-4 h-4 mx-auto" />, l: "Corretor" },
             { k: "perfil" as const, icon: <User className="w-4 h-4 mx-auto" />, l: "Perfil" },
           ].map((it) => (
-            <button key={it.k} onClick={() => setActive(it.k)} className="py-2" style={{ color: active === it.k ? PRIMARY : "#6b7280" }}>
-              {it.icon}<div>{it.l}</div>
+            <button
+              key={it.k}
+              onClick={() => setActive(it.k)}
+              className="flex flex-col items-center justify-center gap-0.5 py-2 min-w-0"
+              style={{ color: active === it.k ? PRIMARY : "#6b7280" }}
+            >
+              {it.icon}
+              <span className="truncate w-full text-center leading-tight">{it.l}</span>
             </button>
           ))}
         </nav>
       )}
 
       {/* Main */}
-      <main className={`pt-16 pb-20 md:pb-0 ${isPending ? "w-full" : "md:pl-[185px]"}`}>
+      <main className={`pt-16 pb-28 md:pb-0 ${isPending ? "w-full" : "md:pl-[185px]"}`}>
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
           {loading ? (
             <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>
