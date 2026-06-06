@@ -94,7 +94,7 @@ export const inviteClient = createServerFn({ method: 'POST' })
       .upsert({
         user_id: userId,
         email: email,
-        name: data.name,
+        name: name,
         cpf: data.cpf || null,
         phone: data.phone || null,
         birth_date: data.birth_date || null,
