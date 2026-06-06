@@ -62,7 +62,7 @@ export const inviteClient = createServerFn({ method: 'POST' })
         const created = await supabaseAdmin.auth.admin.createUser({
           email,
           email_confirm: true,
-          user_metadata: { name: data.name },
+          user_metadata: { name },
         });
         if (created.error) {
           const cMsg = created.error.message?.toLowerCase() ?? '';
