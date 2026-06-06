@@ -331,9 +331,10 @@ function AdminDashboard() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-16 bottom-0 left-0 w-[195px] bg-gray-50 border-r border-gray-200 z-20 py-4 px-3 overflow-y-auto transition-transform duration-200 ease-in-out md:translate-x-0 ${
+        className={`fixed bottom-0 left-0 w-[195px] bg-gray-50 border-r border-gray-200 z-20 py-4 px-3 overflow-y-auto transition-transform duration-200 ease-in-out md:translate-x-0 ${
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
+        style={{ top: "calc(4rem + env(safe-area-inset-top))" }}
       >
         <SectionLabel>Geral</SectionLabel>
         <NavItem
