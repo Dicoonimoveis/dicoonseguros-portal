@@ -244,7 +244,7 @@ function ClientDashboard() {
 
       {/* Sidebar */}
       {!isPending && (
-        <aside className="fixed top-16 bottom-0 left-0 z-20 hidden md:block bg-gray-50 border-r border-gray-200 py-4 px-2" style={{ width: 185 }}>
+        <aside className="fixed bottom-0 left-0 z-20 hidden md:block bg-gray-50 border-r border-gray-200 py-4 px-2" style={{ width: 185, top: "calc(4rem + env(safe-area-inset-top))" }}>
           <nav className="space-y-0.5">
             <NavItem icon={<FileText className="w-4 h-4" />} label="Minhas apólices" k="apolices" active={active} onClick={setActive} />
             <NavItem icon={<AlertTriangle className="w-4 h-4" />} label="Sinistros" k="sinistros" active={active} onClick={setActive} />
