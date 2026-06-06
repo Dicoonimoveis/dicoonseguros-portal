@@ -233,7 +233,7 @@ function AdminDashboard() {
   return (
     <div className="min-h-screen font-sans" style={{ backgroundColor: BG }}>
       {/* Top bar */}
-      <header className="fixed top-0 inset-x-0 h-16 bg-white border-b border-gray-200 z-30 flex items-center justify-between px-4 sm:px-6">
+      <header className="fixed top-0 inset-x-0 h-16 bg-white border-b border-gray-200 z-30 flex items-center justify-between px-4 sm:px-6" style={{ paddingTop: "env(safe-area-inset-top)", height: "calc(4rem + env(safe-area-inset-top))" }}>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -331,9 +331,10 @@ function AdminDashboard() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-16 bottom-0 left-0 w-[195px] bg-gray-50 border-r border-gray-200 z-20 py-4 px-3 overflow-y-auto transition-transform duration-200 ease-in-out md:translate-x-0 ${
+        className={`fixed bottom-0 left-0 w-[195px] bg-gray-50 border-r border-gray-200 z-20 py-4 px-3 overflow-y-auto transition-transform duration-200 ease-in-out md:translate-x-0 ${
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
+        style={{ top: "calc(4rem + env(safe-area-inset-top))" }}
       >
         <SectionLabel>Geral</SectionLabel>
         <NavItem
@@ -450,7 +451,7 @@ function AdminDashboard() {
       </aside>
 
       {/* Main */}
-      <main className="pt-16 md:pl-[195px]">
+      <main className="md:pl-[195px]" style={{ paddingTop: "calc(4rem + env(safe-area-inset-top))" }}>
         <div className="max-w-6xl mx-auto px-6 py-8">
           {loading ? (
             <p className="text-sm text-gray-500">Carregando…</p>

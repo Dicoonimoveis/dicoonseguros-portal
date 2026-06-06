@@ -28,7 +28,7 @@ export const Route = createRootRoute({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" },
       { title: "Dicoon Seguros-App" },
       { name: "description", content: "Sistema Interligente e pipeline para corretoras de seguro." },
       { name: "author", content: "Dicoon Seguros" },

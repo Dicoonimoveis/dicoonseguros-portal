@@ -223,7 +223,7 @@ function ClientDashboard() {
   return (
     <div className="min-h-screen font-sans" style={{ backgroundColor: BG, fontFamily: "Inter, system-ui, sans-serif" }}>
       {/* Top bar */}
-      <header className="fixed top-0 inset-x-0 h-16 bg-white border-b border-gray-200 z-30 flex items-center justify-between px-4 sm:px-6">
+      <header className="fixed top-0 inset-x-0 h-16 bg-white border-b border-gray-200 z-30 flex items-center justify-between px-4 sm:px-6" style={{ paddingTop: "env(safe-area-inset-top)", height: "calc(4rem + env(safe-area-inset-top))" }}>
         <div className="flex items-center gap-2">
           <Shield className="w-6 h-6" style={{ color: PRIMARY }} strokeWidth={2.4} />
           <span className="text-base sm:text-lg font-bold" style={{ color: PRIMARY }}>Dicoon Seguros</span>
@@ -244,7 +244,7 @@ function ClientDashboard() {
 
       {/* Sidebar */}
       {!isPending && (
-        <aside className="fixed top-16 bottom-0 left-0 z-20 hidden md:block bg-gray-50 border-r border-gray-200 py-4 px-2" style={{ width: 185 }}>
+        <aside className="fixed bottom-0 left-0 z-20 hidden md:block bg-gray-50 border-r border-gray-200 py-4 px-2" style={{ width: 185, top: "calc(4rem + env(safe-area-inset-top))" }}>
           <nav className="space-y-0.5">
             <NavItem icon={<FileText className="w-4 h-4" />} label="Minhas apólices" k="apolices" active={active} onClick={setActive} />
             <NavItem icon={<AlertTriangle className="w-4 h-4" />} label="Sinistros" k="sinistros" active={active} onClick={setActive} />
@@ -258,7 +258,10 @@ function ClientDashboard() {
 
       {/* Mobile bottom nav */}
       {!isPending && (
-        <nav className="md:hidden fixed bottom-0 inset-x-0 z-20 bg-white border-t border-gray-200 grid grid-cols-6 text-[10px]">
+        <nav
+          className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-gray-200 grid grid-cols-6 text-[10px]"
+          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        >
           {[
             { k: "apolices" as const, icon: <FileText className="w-4 h-4 mx-auto" />, l: "Apólices" },
             { k: "sinistros" as const, icon: <AlertTriangle className="w-4 h-4 mx-auto" />, l: "Sinistros" },
@@ -267,15 +270,21 @@ function ClientDashboard() {
             { k: "corretor" as const, icon: <MessageCircle className="w-4 h-4 mx-auto" />, l: "Corretor" },
             { k: "perfil" as const, icon: <User className="w-4 h-4 mx-auto" />, l: "Perfil" },
           ].map((it) => (
-            <button key={it.k} onClick={() => setActive(it.k)} className="py-2" style={{ color: active === it.k ? PRIMARY : "#6b7280" }}>
-              {it.icon}<div>{it.l}</div>
+            <button
+              key={it.k}
+              onClick={() => setActive(it.k)}
+              className="flex flex-col items-center justify-center gap-0.5 py-2 min-w-0"
+              style={{ color: active === it.k ? PRIMARY : "#6b7280" }}
+            >
+              {it.icon}
+              <span className="truncate w-full text-center leading-tight">{it.l}</span>
             </button>
           ))}
         </nav>
       )}
 
       {/* Main */}
-      <main className={`pt-16 pb-20 md:pb-0 ${isPending ? "w-full" : "md:pl-[185px]"}`}>
+      <main className={`pb-28 md:pb-0 ${isPending ? "w-full" : "md:pl-[185px]"}`} style={{ paddingTop: "calc(4rem + env(safe-area-inset-top))" }}>
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
           {loading ? (
             <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>
