@@ -39,12 +39,14 @@ export const inviteClient = createServerFn({ method: 'POST' })
     await ensureCallerIsAdmin(context.userId);
 
     const email = data.email.toLowerCase();
+    // Standardize the client name to uppercase for a consistent look across the system.
+    const name = data.name.trim().toUpperCase();
     let userId: string | null = null;
     let alreadyExisted = false;
 
     // Try to invite (sends magic-link email; user sets own password).
     const inviteRes = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-      data: { name: data.name },
+      data: { name },
     });
 
     if (inviteRes.error) {
