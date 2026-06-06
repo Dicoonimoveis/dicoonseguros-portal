@@ -284,7 +284,7 @@ function ClientDashboard() {
       )}
 
       {/* Main */}
-      <main className={`pt-16 pb-28 md:pb-0 ${isPending ? "w-full" : "md:pl-[185px]"}`}>
+      <main className={`pb-28 md:pb-0 ${isPending ? "w-full" : "md:pl-[185px]"}`} style={{ paddingTop: "calc(4rem + env(safe-area-inset-top))" }}>
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
           {loading ? (
             <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>
