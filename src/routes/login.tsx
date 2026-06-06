@@ -125,7 +125,7 @@ function LoginPage() {
             .from("profiles")
             .upsert({
               user_id: authUser.id,
-              name: name.trim(),
+              name: name.trim().toUpperCase(),
               email: email.trim().toLowerCase(),
               cpf: cpf.trim(),
               phone: phone.trim(),
