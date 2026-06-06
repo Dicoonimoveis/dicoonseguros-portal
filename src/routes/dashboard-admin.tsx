@@ -451,7 +451,7 @@ function AdminDashboard() {
       </aside>
 
       {/* Main */}
-      <main className="pt-16 md:pl-[195px]">
+      <main className="md:pl-[195px]" style={{ paddingTop: "calc(4rem + env(safe-area-inset-top))" }}>
         <div className="max-w-6xl mx-auto px-6 py-8">
           {loading ? (
             <p className="text-sm text-gray-500">Carregando…</p>
