@@ -28,14 +28,42 @@ function DashboardPage() {
   const userEmail = user?.email ?? "Usuário";
   const [selectedOp, setSelectedOp] = useState<any>(null);
   const [isApoliceModalOpen, setIsApoliceModalOpen] = useState(false);
+  const [isAttaching, setIsAttaching] = useState(false);
+  const inviteFromProposal = useServerFn(inviteClientFromProposal);
 
-  const handleAttachApolice = (e: React.FormEvent) => {
+  const handleAttachApolice = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsApoliceModalOpen(false);
-    toast.success(`Apólice anexada com sucesso! Dados de ${selectedOp.client} migrados automaticamente.`, {
-      description: "Todos os dados do veículo e cotação foram vinculados à nova apólice.",
-    });
+    setIsAttaching(true);
+    try {
+      // Automation: when a proposal is attached, invite the client if they are new.
+      let inviteMsg = "";
+      if (selectedOp?.email) {
+        const res = await inviteFromProposal({
+          data: {
+            clientId: selectedOp.clientId ?? null,
+            email: selectedOp.email,
+            name: selectedOp.client ?? null,
+          },
+        });
+        inviteMsg = res.invited
+          ? ` Cliente novo: convite de cadastro enviado para ${selectedOp.email}.`
+          : " Cliente já cadastrado no sistema.";
+      }
+      setIsApoliceModalOpen(false);
+      toast.success(`Apólice anexada com sucesso! Dados de ${selectedOp.client} migrados automaticamente.`, {
+        description: `Todos os dados do veículo e cotação foram vinculados à nova apólice.${inviteMsg}`,
+      });
+    } catch (err: any) {
+      toast.error("Falha ao processar a proposta.", {
+        description: err?.message ?? "Tente novamente.",
+      });
+    } finally {
+      setIsAttaching(false);
+    }
   };
+
+
+
 
 
   return (
