@@ -292,9 +292,10 @@ function DashboardPage() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:brightness-110 transition-all shadow-glow"
+                  disabled={isAttaching}
+                  className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:brightness-110 transition-all shadow-glow disabled:opacity-60"
                 >
-                  Confirmar e Converter
+                  {isAttaching ? "Processando..." : "Confirmar e Converter"}
                 </button>
               </div>
             </form>
