@@ -450,9 +450,36 @@ function AdminDashboard() {
         />
       </aside>
 
+      {/* Mobile bottom nav */}
+      <nav
+        className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-gray-200 grid grid-cols-5 text-[10px]"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
+        {[
+          { k: "dashboard" as NavKey, icon: <LayoutDashboard className="w-4 h-4 mx-auto" />, l: "Início" },
+          { k: "clientes" as NavKey, icon: <Users className="w-4 h-4 mx-auto" />, l: "Clientes" },
+          { k: "apolices" as NavKey, icon: <FileText className="w-4 h-4 mx-auto" />, l: "Apólices" },
+          { k: "vencimentos" as NavKey, icon: <CalendarClock className="w-4 h-4 mx-auto" />, l: "Vencim." },
+          { k: "importar_apolice" as NavKey, icon: <ScanLine className="w-4 h-4 mx-auto" />, l: "Importar" },
+        ].map((it) => (
+          <button
+            key={it.k}
+            onClick={() => { setActive(it.k); setIsSidebarOpen(false); }}
+            className="relative flex flex-col items-center justify-center gap-0.5 py-2 min-w-0"
+            style={{ color: active === it.k ? PRIMARY : "#6b7280" }}
+          >
+            {it.k === "vencimentos" && urgent.length > 0 && (
+              <span className="absolute top-1 right-1/2 translate-x-3 w-4 h-4 rounded-full bg-red-500 text-white text-[8px] font-bold grid place-items-center">{urgent.length}</span>
+            )}
+            {it.icon}
+            <span className="truncate w-full text-center leading-tight">{it.l}</span>
+          </button>
+        ))}
+      </nav>
+
       {/* Main */}
-      <main className="md:pl-[195px]" style={{ paddingTop: "calc(4rem + env(safe-area-inset-top))" }}>
-        <div className="max-w-6xl mx-auto px-6 py-8">
+      <main className="md:pl-[195px] pb-24 md:pb-0" style={{ paddingTop: "calc(4rem + env(safe-area-inset-top))" }}>
+        <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-5 sm:py-8">
           {loading ? (
             <p className="text-sm text-gray-500">Carregando…</p>
           ) : (
