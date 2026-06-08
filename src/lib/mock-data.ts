@@ -20,16 +20,16 @@ export const tasks = [
 export type Stage = "Novo" | "Cotando" | "Proposta" | "Negociação" | "Fechado";
 
 export const opportunities: {
-  id: string; client: string; product: string; value: number; stage: Stage; days: number; insurer?: string;
+  id: string; client: string; product: string; value: number; stage: Stage; days: number; insurer?: string; email?: string; clientId?: string;
 }[] = [
-  { id: "OP-1042", client: "Marina Souza", product: "Auto — Civic 2022", value: 4280, stage: "Novo", days: 1 },
-  { id: "OP-1041", client: "Gabriel Lemos", product: "Vida 500k", value: 2150, stage: "Novo", days: 2 },
-  { id: "OP-1039", client: "Construtora Aral", product: "Empresarial", value: 18900, stage: "Cotando", days: 3 },
-  { id: "OP-1037", client: "Família Tavares", product: "Vida familiar", value: 3870, stage: "Cotando", days: 4 },
-  { id: "OP-1035", client: "Lucas Andrade", product: "Auto — HRV 2024", value: 5120, stage: "Proposta", days: 5, insurer: "Porto" },
-  { id: "OP-1031", client: "Beatriz Nunes", product: "Residencial Premium", value: 2940, stage: "Proposta", days: 6, insurer: "Bradesco" },
-  { id: "OP-1028", client: "Studio Norte", product: "Empresarial", value: 12400, stage: "Negociação", days: 8, insurer: "Allianz" },
-  { id: "OP-1024", client: "Rafael Pires", product: "Auto — Compass", value: 4790, stage: "Fechado", days: 11, insurer: "Porto" },
+  { id: "OP-1042", client: "Marina Souza", product: "Auto — Civic 2022", value: 4280, stage: "Novo", days: 1, email: "marina.souza@email.com" },
+  { id: "OP-1041", client: "Gabriel Lemos", product: "Vida 500k", value: 2150, stage: "Novo", days: 2, email: "gabriel.lemos@email.com" },
+  { id: "OP-1039", client: "Construtora Aral", product: "Empresarial", value: 18900, stage: "Cotando", days: 3, email: "contato@construtoraaral.com" },
+  { id: "OP-1037", client: "Família Tavares", product: "Vida familiar", value: 3870, stage: "Cotando", days: 4, email: "familia.tavares@email.com" },
+  { id: "OP-1035", client: "Lucas Andrade", product: "Auto — HRV 2024", value: 5120, stage: "Proposta", days: 5, insurer: "Porto", email: "lucas.andrade@email.com" },
+  { id: "OP-1031", client: "Beatriz Nunes", product: "Residencial Premium", value: 2940, stage: "Proposta", days: 6, insurer: "Bradesco", email: "beatriz.nunes@email.com" },
+  { id: "OP-1028", client: "Studio Norte", product: "Empresarial", value: 12400, stage: "Negociação", days: 8, insurer: "Allianz", email: "contato@studionorte.com" },
+  { id: "OP-1024", client: "Rafael Pires", product: "Auto — Compass", value: 4790, stage: "Fechado", days: 11, insurer: "Porto", email: "rafael.pires@email.com" },
 ];
 
 export const leads = [

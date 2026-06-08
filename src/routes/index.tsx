@@ -8,6 +8,8 @@ import { motion } from "framer-motion";
 import { ArrowUpRight, ArrowDownRight, Phone, FileText, Users2, Sparkles, TrendingUp, Clock, AlertCircle, CheckCircle2, ShieldCheck, Upload, X } from "lucide-react";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { inviteClientFromProposal } from "@/lib/proposal-invite.functions";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/")({
@@ -26,14 +28,42 @@ function DashboardPage() {
   const userEmail = user?.email ?? "Usuário";
   const [selectedOp, setSelectedOp] = useState<any>(null);
   const [isApoliceModalOpen, setIsApoliceModalOpen] = useState(false);
+  const [isAttaching, setIsAttaching] = useState(false);
+  const inviteFromProposal = useServerFn(inviteClientFromProposal);
 
-  const handleAttachApolice = (e: React.FormEvent) => {
+  const handleAttachApolice = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsApoliceModalOpen(false);
-    toast.success(`Apólice anexada com sucesso! Dados de ${selectedOp.client} migrados automaticamente.`, {
-      description: "Todos os dados do veículo e cotação foram vinculados à nova apólice.",
-    });
+    setIsAttaching(true);
+    try {
+      // Automation: when a proposal is attached, invite the client if they are new.
+      let inviteMsg = "";
+      if (selectedOp?.email) {
+        const res = await inviteFromProposal({
+          data: {
+            clientId: selectedOp.clientId ?? null,
+            email: selectedOp.email,
+            name: selectedOp.client ?? null,
+          },
+        });
+        inviteMsg = res.invited
+          ? ` Cliente novo: convite de cadastro enviado para ${selectedOp.email}.`
+          : " Cliente já cadastrado no sistema.";
+      }
+      setIsApoliceModalOpen(false);
+      toast.success(`Apólice anexada com sucesso! Dados de ${selectedOp.client} migrados automaticamente.`, {
+        description: `Todos os dados do veículo e cotação foram vinculados à nova apólice.${inviteMsg}`,
+      });
+    } catch (err: any) {
+      toast.error("Falha ao processar a proposta.", {
+        description: err?.message ?? "Tente novamente.",
+      });
+    } finally {
+      setIsAttaching(false);
+    }
   };
+
+
+
 
 
   return (
@@ -262,9 +292,10 @@ function DashboardPage() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:brightness-110 transition-all shadow-glow"
+                  disabled={isAttaching}
+                  className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:brightness-110 transition-all shadow-glow disabled:opacity-60"
                 >
-                  Confirmar e Converter
+                  {isAttaching ? "Processando..." : "Confirmar e Converter"}
                 </button>
               </div>
             </form>
