@@ -8,6 +8,8 @@ import { motion } from "framer-motion";
 import { ArrowUpRight, ArrowDownRight, Phone, FileText, Users2, Sparkles, TrendingUp, Clock, AlertCircle, CheckCircle2, ShieldCheck, Upload, X } from "lucide-react";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { inviteClientFromProposal } from "@/lib/proposal-invite.functions";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/")({
