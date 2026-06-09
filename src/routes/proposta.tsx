@@ -2,12 +2,13 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
 import { PageHeader } from "@/components/PageHeader";
-import { Download, Mail, Share2, Eye, FileCheck, Loader2 } from "lucide-react";
+import { Download, Mail, Share2, Eye, Loader2, CheckCircle2 } from "lucide-react";
 import { useState } from "react";
 import { ProposalPDF } from "@/components/ProposalPDF";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { toast } from "sonner";
+import { buildWhatsAppProposalMessage } from "@/lib/email-templates";
 
 export const Route = createFileRoute("/proposta")({
   beforeLoad: async () => {
@@ -48,6 +49,8 @@ function PropostaPage() {
   const [template, setTemplate] = useState<"padrao" | "premium" | "simplificada">("padrao");
   const [showPreview, setShowPreview] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
 
   const handleExportPDF = async () => {
     setIsGenerating(true);
@@ -75,6 +78,53 @@ function PropostaPage() {
       toast.error("Erro ao gerar PDF.");
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  // ── WhatsApp: structured professional template (wa.me fallback while Meta API is not active)
+  const handleWhatsApp = () => {
+    const phone = proposalData.phone.replace(/\D/g, "");
+    const message = buildWhatsAppProposalMessage({
+      clientName: proposalData.client,
+      proposalId: proposalData.id,
+      insurer: proposalData.insurer,
+      vehicle: proposalData.vehicle,
+      premiumAnnual: proposalData.premium,
+      premiumMonthly: proposalData.monthly,
+    });
+    window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(message)}`, "_blank");
+  };
+
+  // ── Email: calls the proposal-invite server function which uses Resend + optimised template
+  const handleSendEmail = async () => {
+    setIsSendingEmail(true);
+    try {
+      // Dynamic import to avoid bundling the server fn unnecessarily
+      const { inviteClientFromProposal } = await import("@/lib/proposal-invite.functions");
+      const result = await inviteClientFromProposal({
+        data: {
+          email: proposalData.email,
+          name: proposalData.client,
+          clientId: null,
+        },
+      });
+      if (result.alreadyRegistered) {
+        toast.info("Cliente já possui acesso ao portal.", {
+          description: "Um e-mail não foi reenviado para evitar duplicatas.",
+        });
+      } else {
+        setEmailSent(true);
+        toast.success("E-mail enviado com sucesso!", {
+          description: `Convite enviado para ${proposalData.email}.`,
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Falha ao enviar e-mail.", {
+        description: "Tente novamente ou verifique a configuração do Resend.",
+      });
+    } finally {
+      setIsSendingEmail(false);
     }
   };
 
@@ -226,18 +276,27 @@ function PropostaPage() {
             Exportar PDF Premium
           </button>
 
-          <button className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-border hover:bg-surface/50 font-medium text-sm transition-colors">
-            <Mail className="w-4 h-4" /> Enviar por E-mail
+          {/* Email — uses Resend with optimised template (dual-body, no tracking) */}
+          <button
+            id="btn-send-email-proposal"
+            onClick={handleSendEmail}
+            disabled={isSendingEmail || emailSent}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-border hover:bg-surface/50 font-medium text-sm transition-colors disabled:opacity-60"
+          >
+            {isSendingEmail ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : emailSent ? (
+              <CheckCircle2 className="w-4 h-4 text-green-500" />
+            ) : (
+              <Mail className="w-4 h-4" />
+            )}
+            {emailSent ? "E-mail Enviado" : isSendingEmail ? "Enviando..." : "Enviar por E-mail"}
           </button>
 
-          <button 
-            onClick={() => {
-              const phone = proposalData.phone.replace(/\D/g, "");
-              const message = encodeURIComponent(
-                `Olá ${proposalData.client}, aqui está a sua proposta de seguro (${proposalData.id}) para o veículo ${proposalData.vehicle} na ${proposalData.insurer}. O valor total é de R$ ${proposalData.premium.toLocaleString("pt-BR")} ou 12x de R$ ${proposalData.monthly.toLocaleString("pt-BR")}. Qualquer dúvida, estou à disposição!`
-              );
-              window.open(`https://wa.me/55${phone}?text=${message}`, "_blank");
-            }}
+          {/* WhatsApp — professional structured template with portal link */}
+          <button
+            id="btn-send-whatsapp-proposal"
+            onClick={handleWhatsApp}
             className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-[#25D366] text-[#25D366] hover:bg-[#25D366]/5 font-medium text-sm transition-colors"
           >
             <Share2 className="w-4 h-4" /> Enviar WhatsApp

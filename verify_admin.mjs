@@ -10,7 +10,7 @@ const supabaseKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function check() {
-  const email = "ricardo.dicoon@gmail.com";
+  const email = "contato.dicoonseguros@gmail.com";
   const password = "dicoon123";
   
   const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({

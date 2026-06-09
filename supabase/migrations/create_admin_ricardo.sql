@@ -3,7 +3,7 @@ DECLARE
   new_user_id uuid;
 BEGIN
   -- Verificar se o usuário já existe
-  IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'ricardo.dicoon@gmail.com') THEN
+  IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'contato.dicoonseguros@gmail.com') THEN
     -- Gerar novo ID
     new_user_id := gen_random_uuid();
     
@@ -15,7 +15,7 @@ BEGIN
     VALUES (
       new_user_id,
       '00000000-0000-0000-0000-000000000000',
-      'ricardo.dicoon@gmail.com',
+      'contato.dicoonseguros@gmail.com',
       crypt('dicoon123', gen_salt('bf')),
       now(),
       '{"name":"Ricardo Admin"}',
@@ -31,7 +31,7 @@ BEGIN
     VALUES (
       gen_random_uuid(),
       new_user_id,
-      format('{"sub":"%s","email":"%s"}', new_user_id::text, 'ricardo.dicoon@gmail.com')::jsonb,
+      format('{"sub":"%s","email":"%s"}', new_user_id::text, 'contato.dicoonseguros@gmail.com')::jsonb,
       'email',
       now(),
       now(),
@@ -39,7 +39,7 @@ BEGIN
     );
   ELSE
     -- Se o usuário já existir, apenas recupera o ID e atualiza a senha
-    SELECT id INTO new_user_id FROM auth.users WHERE email = 'ricardo.dicoon@gmail.com';
+    SELECT id INTO new_user_id FROM auth.users WHERE email = 'contato.dicoonseguros@gmail.com';
     UPDATE auth.users 
     SET encrypted_password = crypt('dicoon123', gen_salt('bf')), 
         email_confirmed_at = COALESCE(email_confirmed_at, now())
@@ -49,7 +49,7 @@ BEGIN
   -- Garantir que o perfil existe na tabela 'profiles'
   IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE user_id = new_user_id) THEN
     INSERT INTO public.profiles (user_id, name, email) 
-    VALUES (new_user_id, 'Ricardo Admin', 'ricardo.dicoon@gmail.com');
+    VALUES (new_user_id, 'Ricardo Admin', 'contato.dicoonseguros@gmail.com');
   END IF;
 
   -- Garantir que o usuário seja 'admin' na tabela 'user_roles'

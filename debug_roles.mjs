@@ -11,7 +11,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function check() {
   const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-    email: "ricardo.dicoon@gmail.com",
+    email: "contato.dicoonseguros@gmail.com",
     password: "dicoon123"
   });
   

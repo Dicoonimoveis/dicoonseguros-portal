@@ -15,7 +15,7 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function run() {
-  const email = "ricardo.dicoon@gmail.com";
+  const email = "contato.dicoonseguros@gmail.com";
   const password = "dicoon123";
   
   console.log("Tentando criar/logar o usuário...");
