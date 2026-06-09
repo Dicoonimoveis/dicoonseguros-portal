@@ -9,6 +9,8 @@ import { ptBR } from "https://esm.sh/date-fns@4.1.0/locale";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
+const WHATSAPP_ACCESS_TOKEN = Deno.env.get("WHATSAPP_ACCESS_TOKEN") || "";
+const WHATSAPP_PHONE_NUMBER_ID = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID") || "";
 
 // E-mail identity — uses a dedicated subdomain to isolate sending reputation.
 // SPF, DKIM and DMARC must be configured for mail.dicoonseguros.com.br.
@@ -31,7 +33,7 @@ interface PolicyRow {
   policy_type: string;
   end_date: string;
   status: string;
-  profile: { email: string | null; name: string | null } | null;
+  profile: { email: string | null; name: string | null; phone: string | null } | null;
 }
 
 interface EmailContent {
@@ -208,6 +210,76 @@ async function sendEmail(
 }
 
 // ---------------------------------------------------------------------------
+// Send via WhatsApp Business Cloud API
+// ---------------------------------------------------------------------------
+async function sendWhatsApp(
+  phone: string,
+  clientName: string,
+  policyNumber: string,
+  policyType: string,
+  endDate: string,
+  daysLeft: number,
+): Promise<boolean> {
+  if (!WHATSAPP_ACCESS_TOKEN || !WHATSAPP_PHONE_NUMBER_ID) {
+    console.log("[policy-expiry] WhatsApp credentials not configured. Skipping WhatsApp notification.");
+    return false;
+  }
+
+  const cleanPhone = phone.replace(/\D/g, "");
+  if (!cleanPhone) return false;
+
+  // Add Brazil country code 55 if missing and phone number doesn't have it
+  const formattedPhone = cleanPhone.length <= 11 ? `55${cleanPhone}` : cleanPhone;
+  const daysLabel = daysLeft > 0 ? `${daysLeft} dias` : "hoje";
+
+  const payload = {
+    messaging_product: "whatsapp",
+    recipient_type: "individual",
+    to: formattedPhone,
+    type: "template",
+    template: {
+      name: "policy_renewal_reminder",
+      language: { code: "pt_BR" },
+      components: [
+        {
+          type: "body",
+          parameters: [
+            { type: "text", text: clientName },
+            { type: "text", text: policyNumber },
+            { type: "text", text: policyType },
+            { type: "text", text: `${endDate} (${daysLabel})` },
+            { type: "text", text: PORTAL_URL },
+          ],
+        },
+      ],
+    },
+  };
+
+  try {
+    const url = `https://graph.facebook.com/v19.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error(`[policy-expiry] WhatsApp API error for policy ${policyNumber}:`, errText);
+      return false;
+    }
+    console.log(`[policy-expiry] WhatsApp sent successfully to ${formattedPhone}`);
+    return true;
+  } catch (err) {
+    console.error(`[policy-expiry] WhatsApp connection error:`, err);
+    return false;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Main handler
 // ---------------------------------------------------------------------------
 serve(async () => {
@@ -228,7 +300,7 @@ serve(async () => {
 
     const today = startOfDay(new Date());
     const NOTIFY_AT: ExpiryDays[] = [60, 30, 7, 0];
-    const sent: { policy_id: string; daysLeft: number; recipient: string }[] = [];
+    const sent: { policy_id: string; daysLeft: number; emailRecipient: string | null; phoneRecipient: string | null; emailSent: boolean; whatsappSent: boolean }[] = [];
     const skipped: { policy_id: string; reason: string }[] = [];
 
     for (const policy of policies ?? []) {
@@ -236,8 +308,12 @@ serve(async () => {
 
       const clientEmail = policy.profile?.email;
       const clientName = policy.profile?.name || "Cliente";
+      const clientPhone = policy.profile?.phone;
 
-      if (!clientEmail) { skipped.push({ policy_id: policy.id, reason: "no_email" }); continue; }
+      if (!clientEmail && !clientPhone) {
+        skipped.push({ policy_id: policy.id, reason: "no_email_and_no_phone" });
+        continue;
+      }
 
       const end = startOfDay(parseISO(policy.end_date));
       const daysLeft = differenceInDays(end, today);
@@ -245,17 +321,43 @@ serve(async () => {
       if (!(NOTIFY_AT as number[]).includes(daysLeft)) continue;
 
       const endDateFormatted = format(end, "dd/MM/yyyy", { locale: ptBR });
-      const content = buildEmail(
-        clientName,
-        policy.policy_number,
-        policy.policy_type,
-        endDateFormatted,
-        daysLeft as ExpiryDays,
-      );
+      
+      let emailSentOk = false;
+      let whatsappSentOk = false;
 
-      const ok = await sendEmail(clientEmail, content, policy.id);
-      if (ok) {
-        sent.push({ policy_id: policy.id, daysLeft, recipient: clientEmail });
+      if (clientEmail) {
+        const content = buildEmail(
+          clientName,
+          policy.policy_number,
+          policy.policy_type,
+          endDateFormatted,
+          daysLeft as ExpiryDays,
+        );
+        emailSentOk = await sendEmail(clientEmail, content, policy.id);
+      }
+
+      if (clientPhone) {
+        whatsappSentOk = await sendWhatsApp(
+          clientPhone,
+          clientName,
+          policy.policy_number,
+          policy.policy_type,
+          endDateFormatted,
+          daysLeft,
+        );
+      }
+
+      if (emailSentOk || whatsappSentOk) {
+        sent.push({
+          policy_id: policy.id,
+          daysLeft,
+          emailRecipient: clientEmail || null,
+          phoneRecipient: clientPhone || null,
+          emailSent: emailSentOk,
+          whatsappSent: whatsappSentOk,
+        });
+      } else {
+        skipped.push({ policy_id: policy.id, reason: "failed_all_deliveries" });
       }
     }
 
